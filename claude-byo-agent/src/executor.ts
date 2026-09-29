@@ -87,10 +87,12 @@ export class ClaudeAgentExecutor implements AgentExecutor {
       );
 
       const prompt = textOf(userMessage) || 'Hello';
+      console.log(`[claude-byo-agent] task ${taskId} prompt: ${prompt}`);
       let resultText = '';
 
       for await (const sdkMessage of query({ prompt })) {
         if (this.cancelledTasks.has(taskId)) {
+          console.log(`[claude-byo-agent] task ${taskId} canceled`);
           eventBus.publish(
             AgentEvent.statusUpdate({
               taskId,
@@ -105,6 +107,7 @@ export class ClaudeAgentExecutor implements AgentExecutor {
           resultText = sdkMessage.result;
         }
       }
+      console.log(`[claude-byo-agent] task ${taskId} response: ${resultText}`);
 
       const artifact: Artifact = {
         artifactId: crypto.randomUUID(),
