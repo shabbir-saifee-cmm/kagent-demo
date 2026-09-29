@@ -1,0 +1,21 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: claude-byo-agent
+  namespace: kagent
+spec:
+  type: BYO
+  description: >-
+    Claude Code / Claude Agent SDK running as a kagent BYO Agent, authenticated
+    with a personal Claude subscription (CLAUDE_CODE_OAUTH_TOKEN) instead of a
+    metered Anthropic API key.
+  byo:
+    deployment:
+      image: shabbirsaifee/claude-byo-agent:0.1.0
+      imagePullPolicy: Always
+      env:
+        - name: CLAUDE_CODE_OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: claude-byo-agent-oauth
+              key: CLAUDE_CODE_OAUTH_TOKEN
