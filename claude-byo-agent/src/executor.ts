@@ -104,7 +104,10 @@ export class ClaudeAgentExecutor implements AgentExecutor {
 
       for await (const sdkMessage of query({
         prompt,
-        options: resumeSessionId ? { resume: resumeSessionId } : {},
+        options: {
+          permissionMode: 'bypassPermissions',
+          ...(resumeSessionId ? { resume: resumeSessionId } : {}),
+        },
       })) {
         if (this.cancelledTasks.has(taskId)) {
           console.log(`[claude-byo-agent] task ${taskId} canceled`);

@@ -19,3 +19,7 @@ spec:
             secretKeyRef:
               name: claude-byo-agent-oauth
               key: CLAUDE_CODE_OAUTH_TOKEN
+        # Claude Code refuses to bypass tool permissions while running as
+        # root unless this is set; our container has no non-root USER.
+        - name: IS_SANDBOX
+          value: "1"
