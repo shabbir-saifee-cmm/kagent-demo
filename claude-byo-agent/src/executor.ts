@@ -44,9 +44,17 @@ function agentMessage(taskId: string, contextId: string, text: string): Message 
  * Bridges A2A task requests to the Claude Agent SDK, authenticated via
  * CLAUDE_CODE_OAUTH_TOKEN (a Claude Pro/Max/Team subscription token from
  * `claude setup-token`), not a metered ANTHROPIC_API_KEY.
+ *
+ * Multi-turn memory: each A2A contextId maps to one Claude Code session ID.
+ * The first message in a context starts a fresh session; every later message
+ * in the same context resumes it via `options.resume`, so Claude actually
+ * remembers prior turns instead of starting from scratch every call. This is
+ * in-memory and per-pod (fine for the current single-replica deployment) —
+ * a pod restart or a second replica would lose/fragment session continuity.
  */
 export class ClaudeAgentExecutor implements AgentExecutor {
   private readonly cancelledTasks = new Set<string>();
+  private readonly sessionByContext = new Map<string, string>();
 
   public cancelTask = async (taskId: string, _eventBus: ExecutionEventBus): Promise<void> => {
     this.cancelledTasks.add(taskId);
@@ -87,10 +95,17 @@ export class ClaudeAgentExecutor implements AgentExecutor {
       );
 
       const prompt = textOf(userMessage) || 'Hello';
-      console.log(`[claude-byo-agent] task ${taskId} prompt: ${prompt}`);
+      const resumeSessionId = this.sessionByContext.get(contextId);
+      console.log(
+        `[claude-byo-agent] task ${taskId} context ${contextId} prompt: ${prompt}` +
+          (resumeSessionId ? ` (resuming session ${resumeSessionId})` : ' (new session)')
+      );
       let resultText = '';
 
-      for await (const sdkMessage of query({ prompt })) {
+      for await (const sdkMessage of query({
+        prompt,
+        options: resumeSessionId ? { resume: resumeSessionId } : {},
+      })) {
         if (this.cancelledTasks.has(taskId)) {
           console.log(`[claude-byo-agent] task ${taskId} canceled`);
           eventBus.publish(
@@ -102,6 +117,9 @@ export class ClaudeAgentExecutor implements AgentExecutor {
             } satisfies TaskStatusUpdateEvent)
           );
           return;
+        }
+        if (sdkMessage.session_id) {
+          this.sessionByContext.set(contextId, sdkMessage.session_id);
         }
         if (sdkMessage.type === 'result' && sdkMessage.subtype === 'success') {
           resultText = sdkMessage.result;
