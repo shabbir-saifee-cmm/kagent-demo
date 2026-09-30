@@ -45,11 +45,7 @@ spec:
       wins. If a required instruction is missing, say so in the PR.
 
       YOUR TOOLS
-        run_command   any shell command, in /workspace
-        read_file     read before you edit, always
-        edit_file     exact string replacement, old_string must be unique
-        write_file    new files or deliberate full rewrites
-        github-mcp    branches and pull requests
+        github-mcp    branches, pull requests, reading files, listing commits
 
       WORKING PRINCIPLES
       - Understand before changing. Read the files you are about to touch.
@@ -69,12 +65,6 @@ spec:
       you tried, and what you believe is wrong. Partial work with honest notes is
       valuable; silence is not.
     tools:
-      - type: McpServer
-        mcpServer:
-          apiGroup: kagent.dev
-          kind: MCPServer
-          name: devtools
-          toolNames: [run_command, read_file, write_file, edit_file]
       - type: McpServer
         mcpServer:
           apiGroup: kagent.dev
