@@ -75,6 +75,34 @@ Chat with it through kagent's own UI:
 kubectl port-forward -n kagent svc/kagent-ui 8080:8080
 ```
 
+## Also deployed: rca-agent / remote-dev (from the other kagent-demo)
+
+Copied over from `kagent-demo` with placeholder secrets (no real Anthropic/
+GitHub creds yet — swap these for real values to actually use them):
+
+```bash
+kubectl create secret generic kagent-anthropic -n kagent \
+  --from-literal=ANTHROPIC_API_KEY='<real key>'
+kubectl create secret generic github-pat -n kagent \
+  --from-literal=GITHUB_PERSONAL_ACCESS_TOKEN='<real token>'
+
+kubectl apply -f k8s/modelconfig.yaml -f k8s/github-mcp.yaml \
+  -f k8s/rca-agent.yaml -f k8s/remote-dev-agent.yaml
+```
+
+Deliberately **not** copied: `rbac.yaml` (targets `demo`/`argocd` namespaces
+that don't exist here), `devtools-mcp.yaml` (its image only ever existed in
+the local kind cluster's own registry), `devtools-rbac.yaml` (grants
+cluster-admin — not applying that to a shared cluster without a separate
+explicit decision), `build-infra.yaml` (same dead-end in-cluster-registry
+approach already ruled out for this vcluster, see notes below).
+
+Consequence: `remote-dev` is stuck `Accepted: False` — its tools reference
+the `devtools` MCPServer, which doesn't exist here. `rca-agent` and
+`github-mcp` are healthy. MCPServer/init-container pods on this cluster
+also need `spec.deployment.resources` and `spec.deployment.initContainer.resources`
+set explicitly (Kyverno blocks anything without them).
+
 ## Notes
 
 - Why not kagent 1.x: its controller crash-loops on every published alpha

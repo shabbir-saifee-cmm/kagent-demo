@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: MCPServer
+metadata:
+  name: github-mcp
+  namespace: kagent
+spec:
+  transportType: stdio
+  deployment:
+    image: ghcr.io/github/github-mcp-server:latest
+    cmd: /server/github-mcp-server
+    args:
+      - stdio
+      - --toolsets=repos,pull_requests
+      - --enable-command-logging
+    secretRefs:
+      - name: github-pat
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 256Mi }
+    initContainer:
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
+        limits: { cpu: 200m, memory: 128Mi }
