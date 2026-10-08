@@ -1,0 +1,51 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: diagnostic-agent
+  namespace: kagent
+spec:
+  type: Declarative
+  description: Collects pod status, restarts, events and logs for the old (blue) and new (green) ReplicaSets of an Argo Rollout.
+  declarative:
+    runtime: go
+    modelConfig: deepseek
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    systemMessage: |
+      You collect Kubernetes diagnostics for a blue-green Argo Rollout. You only read; never change anything.
+
+      You are given a namespace, a rollout name, a blue (old) pod-template hash and a green (new) pod-template hash.
+      Pods carry the label rollouts-pod-template-hash=<hash>.
+
+      For each of blue and green:
+      1. List the pods (label selector rollouts-pod-template-hash=<hash>). Report phase, ready state, restart count and last termination reason.
+      2. Get recent events in the namespace and keep the ones about those pods or their ReplicaSet.
+      3. Read the last 200 log lines of one pod and summarise errors, panics, stack traces and warnings. Quote at most 5 representative lines.
+
+      Also read the Rollout YAML and report status.phase, status.stableRS, status.blueGreen.activeSelector and what changed in the pod template.
+
+      Reply with facts only, in this shape:
+      ## Rollout
+      ## Blue (<hash>)
+      ## Green (<hash>)
+      ## Notable differences
+      Do not judge whether the release is healthy; another agent does that.
+    tools:
+      - type: McpServer
+        mcpServer:
+          name: kagent-tool-server
+          kind: RemoteMCPServer
+          apiGroup: kagent.dev
+          toolNames:
+            - k8s_get_resources
+            - k8s_get_resource_yaml
+            - k8s_describe_resource
+            - k8s_get_events
+            - k8s_get_pod_logs

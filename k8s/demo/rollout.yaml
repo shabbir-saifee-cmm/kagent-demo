@@ -1,0 +1,74 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: podinfo
+  namespace: demo
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: podinfo
+  strategy:
+    blueGreen:
+      activeService: podinfo-active
+      previewService: podinfo-preview
+      autoPromotionEnabled: true
+      postPromotionAnalysis:
+        templates:
+          - templateName: promotion-report
+        args:
+          - name: rollout
+            value: podinfo
+          - name: blue-hash
+            valueFrom:
+              podTemplateHashValue: Stable
+          - name: green-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+  template:
+    metadata:
+      labels:
+        app: podinfo
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9898"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: podinfo
+          image: ghcr.io/stefanprodan/podinfo:6.7.0
+          ports:
+            - name: http
+              containerPort: 9898
+          env:
+            - name: PODINFO_UI_MESSAGE
+              value: release-1
+            - name: PODINFO_RANDOM_ERROR
+              value: "false"
+            - name: PODINFO_RANDOM_DELAY
+              value: "false"
+            - name: PODINFO_RANDOM_DELAY_MAX
+              value: "3"
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

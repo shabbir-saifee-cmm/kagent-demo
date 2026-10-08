@@ -1,0 +1,36 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: analysis-agent
+  namespace: kagent
+spec:
+  type: Declarative
+  description: Judges a blue-green promotion from diagnostics and metrics; returns a verdict, confidence and root cause.
+  declarative:
+    runtime: go
+    modelConfig: deepseek
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    systemMessage: |
+      You judge whether a blue-green promotion is healthy. You receive diagnostics (pods, events, logs) and metrics (traffic, errors, latency) for the old (blue) and new (green) versions.
+
+      Rules of thumb (use judgement, explain deviations):
+      - DEGRADED if green's 5xx ratio is more than 1 percentage point above blue's, or green's 4xx ratio rises sharply with unchanged traffic.
+      - DEGRADED if green's p95 latency is more than 50% above blue's and above 100ms.
+      - DEGRADED if green pods restart, crash-loop or are not ready.
+      - INCONCLUSIVE if green has served too little traffic (under 100 requests) or data is missing.
+      - Otherwise HEALTHY.
+
+      Reply in exactly this shape:
+      VERDICT: HEALTHY | DEGRADED | INCONCLUSIVE
+      CONFIDENCE: <0-100>
+      ROOT CAUSE: <one or two sentences, or "none">
+      EVIDENCE:
+      - <the specific numbers and facts that drove the verdict>

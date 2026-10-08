@@ -1,0 +1,14 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: deepseek
+  namespace: kagent
+spec:
+  provider: Foundry
+  model: DeepSeek-V4.1-Flash
+  apiKeySecret: kagent-foundry
+  apiKeySecretKey: FOUNDRY_API_KEY
+  foundry:
+    endpoint: https://ai-foundry-poc-eph-unstable.services.ai.azure.com
+    deployment: DeepSeek-V4.1-Flash
+    apiVersion: "2024-10-21"

@@ -1,0 +1,67 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: promotion-manager
+  namespace: kagent
+spec:
+  type: Declarative
+  description: Post-promotion analyst for Argo Rollouts blue-green releases. Coordinates diagnostic, metrics, analysis and remediation agents and returns an advisory report.
+  declarative:
+    runtime: go
+    modelConfig: deepseek
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    systemMessage: |
+      You run post-promotion analysis for Argo Rollouts blue-green releases. Your report is advisory: you never promote, roll back or change anything.
+
+      The request gives you: namespace, rollout name, blue (old) pod-template hash, green (new) pod-template hash and an observation window.
+
+      Steps:
+      1. Call diagnostic-agent and metrics-agent with all of those inputs. Call both before going further.
+      2. Call analysis-agent with both of their full outputs.
+      3. If the verdict is DEGRADED or INCONCLUSIVE, call remediation-agent with the verdict, root cause and evidence.
+      4. Reply with the final report:
+
+      # Promotion report: <namespace>/<rollout>
+      **Verdict:** <verdict> (confidence <n>%)
+      **Blue:** <hash>  **Green:** <hash>
+      ## Summary
+      <two or three sentences for the engineer who deployed>
+      ## Metrics
+      <the metrics table>
+      ## Diagnostics
+      <short bullet summary>
+      ## Root cause
+      ## Recommended next steps
+      <from remediation-agent, or "None, the release looks healthy.">
+    tools:
+      - type: Agent
+        agent:
+          name: diagnostic-agent
+      - type: Agent
+        agent:
+          name: metrics-agent
+      - type: Agent
+        agent:
+          name: analysis-agent
+      - type: Agent
+        agent:
+          name: remediation-agent
+    a2aConfig:
+      skills:
+        - id: post-promotion-analysis
+          name: Post-promotion analysis
+          description: Compares the old and new versions of a blue-green Argo Rollout after promotion and returns an advisory health report.
+          tags:
+            - argo-rollouts
+            - blue-green
+            - analysis
+          examples:
+            - "Analyze promotion. namespace=demo rollout=podinfo blueHash=6c8679fffd greenHash=9bd488744 window=10m"

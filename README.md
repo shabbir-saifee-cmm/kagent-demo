@@ -1,117 +1,91 @@
-# kagent on wild-panda
+# kagent promotion analysis
 
-kagent, fresh, on the `wild-panda` ephemeral vcluster, with a Claude agent
-authenticated via a personal Claude subscription instead of an API key.
+Advisory post-promotion analysis for Argo Rollouts blue-green releases, run by
+a team of native kagent agents on an ephemeral vcluster.
 
-## 1. Connect to the cluster
+When a blue-green Rollout promotes, its `postPromotionAnalysis` starts a Job
+that waits for the green pods to bake, then asks `promotion-manager` for a
+report. The report never blocks or rolls back the release.
 
-```bash
-cd cli && go build -o lava-ephemeral . && ./lava-ephemeral connect wild-panda
-```
+| Agent | Role |
+|---|---|
+| `promotion-manager` | Orchestrates the others and writes the final report |
+| `diagnostic-agent` | Pod status, restarts, events and logs for blue vs green |
+| `metrics-agent` | Prometheus golden signals (traffic, errors, latency) for blue vs green |
+| `analysis-agent` | Verdict, confidence and root cause |
+| `remediation-agent` | Next steps when the verdict is DEGRADED or INCONCLUSIVE |
 
-## 2. Install kagent
+All agents use the `deepseek` ModelConfig (Azure AI Foundry, DeepSeek-V4.1-Flash).
 
-Use `helm` 3.20.0 (pinned in `.tool-versions` via asdf) — newer helm builds
-get their TCP connections reset on this network.
+## Prerequisites
 
-```bash
-helm install kagent-crds oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds --namespace kagent --create-namespace
+- A vcluster with Argo Rollouts installed (e.g. `grumpy-swan`)
+- `helm` 3.20.0 (pinned in `.tool-versions`)
+- A Foundry API key
 
-helm install kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent \
-  --namespace kagent \
-  --set providers.default=anthropic \
-  --set k8s-agent.enabled=false \
-  --set kgateway-agent.enabled=false \
-  --set istio-agent.enabled=false \
-  --set promql-agent.enabled=false \
-  --set observability-agent.enabled=false \
-  --set argo-rollouts-agent.enabled=false \
-  --set helm-agent.enabled=false \
-  --set cilium-policy-agent.enabled=false \
-  --set cilium-manager-agent.enabled=false \
-  --set cilium-debug-agent.enabled=false
-```
-
-The `*.enabled=false` flags skip every bundled demo agent — fresh cluster,
-no pre-existing agents. `kubectl get agents -n kagent` should come back empty.
-
-## 3. Deploy the Claude agent
-
-`claude-byo-agent/` is a small custom A2A server wrapping
-`@anthropic-ai/claude-agent-sdk`, deployed as a kagent **BYO Agent**
-(kagent just runs the container and proxies A2A to it — model, tools, and
-auth are all inside our code, not kagent config).
+## 1. Install kagent
 
 ```bash
-# 1. Get a subscription token (bills to your Claude plan, not a metered API key)
-claude setup-token
+kubectl create ns kagent
+kubectl -n kagent create secret generic kagent-foundry --from-literal=FOUNDRY_API_KEY='<key>'
 
-# 2. Put it in a Secret (not a committed file)
-kubectl create secret generic claude-byo-agent-oauth -n kagent \
-  --from-literal=CLAUDE_CODE_OAUTH_TOKEN='<token from step 1>'
-
-# 3. Build and push the image
-cd claude-byo-agent
-npm install && npx tsc -p tsconfig.json
-docker buildx build --platform linux/amd64 -t <your-dockerhub-user>/claude-byo-agent:0.1.0 --provenance=false --push .
-
-# 4. Deploy it
-kubectl apply -f ../k8s/claude-byo-agent.yaml
+helm install kagent-crds oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds -n kagent --version 0.10.3
+helm install kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent -n kagent --version 0.10.3 -f helm/kagent-values.yaml
 ```
 
-Update the image reference in `k8s/claude-byo-agent.yaml` if you're not
-pushing to `shabbirsaifee/claude-byo-agent`.
+The controller restarts a few times on first install until Postgres is up.
 
-## 4. Verify
+## 2. Install Prometheus
 
 ```bash
-kubectl get agent claude-byo-agent -n kagent      # Ready
-kubectl get pods -n kagent -l app.kubernetes.io/name=claude-byo-agent   # 1/1 Running
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install prometheus prometheus-community/prometheus -n monitoring --create-namespace -f helm/prometheus-values.yaml
 ```
 
-Chat with it through kagent's own UI:
+## 3. Deploy the agents
 
 ```bash
-kubectl port-forward -n kagent svc/kagent-ui 8080:8080
+kubectl apply -f k8s/agents/
+kubectl get agents -n kagent
 ```
 
-## Also deployed: rca-agent / remote-dev (from the other kagent-demo)
+If `promotion-manager` reports `remediation-agent not found`, it was created
+before its sub-agents; recreate it with
+`kubectl delete -f k8s/agents/promotion-manager.yaml && kubectl apply -f k8s/agents/promotion-manager.yaml`.
 
-Copied over from `kagent-demo` with placeholder secrets (no real Anthropic/
-GitHub creds yet — swap these for real values to actually use them):
+Smoke test:
 
 ```bash
-kubectl create secret generic kagent-anthropic -n kagent \
-  --from-literal=ANTHROPIC_API_KEY='<real key>'
-kubectl create secret generic github-pat -n kagent \
-  --from-literal=GITHUB_PERSONAL_ACCESS_TOKEN='<real token>'
-
-kubectl apply -f k8s/modelconfig.yaml -f k8s/github-mcp.yaml \
-  -f k8s/rca-agent.yaml -f k8s/remote-dev-agent.yaml
+kubectl -n kagent port-forward svc/kagent-controller 8083:8083 &
+scripts/ask-agent.sh analysis-agent "Reply with just the word OK."
 ```
 
-Deliberately **not** copied: `rbac.yaml` (targets `demo`/`argocd` namespaces
-that don't exist here), `devtools-mcp.yaml` (its image only ever existed in
-the local kind cluster's own registry), `devtools-rbac.yaml` (grants
-cluster-admin — not applying that to a shared cluster without a separate
-explicit decision), `build-infra.yaml` (same dead-end in-cluster-registry
-approach already ruled out for this vcluster, see notes below).
+## 4. Deploy the demo app
 
-Consequence: `remote-dev` is stuck `Accepted: False` — its tools reference
-the `devtools` MCPServer, which doesn't exist here. `rca-agent` and
-`github-mcp` are healthy. MCPServer/init-container pods on this cluster
-also need `spec.deployment.resources` and `spec.deployment.initContainer.resources`
-set explicitly (Kyverno blocks anything without them).
+```bash
+kubectl apply -f k8s/demo/namespace.yaml
+kubectl apply -f k8s/demo/
+```
 
-## Notes
+Release-1 is the initial deploy, so no analysis runs.
 
-- Why not kagent 1.x: its controller crash-loops on every published alpha
-  ([kagent-dev/kagent#2581](https://github.com/kagent-dev/kagent/issues/2581)),
-  and its native Claude runtime requires real Agent Substrate infra (gVisor
-  node classes) this vcluster can't provide anyway.
-- Why BYO instead of a `Declarative` agent + `ModelConfig`: kagent has no
-  config path for subscription/OAuth auth, only API keys — confirmed in
-  kagent's own source, on both the 0.x and 1.x lines.
-- Why not the in-cluster-registry route: this vcluster's nodes can't reach
-  a plain-HTTP registry (containerd requires TLS, no node-level access to
-  override it) — pushed to Docker Hub instead.
+## 5. Trigger an analysis
+
+```bash
+kubectl -n demo patch rollout podinfo --type=json \
+  -p='[{"op":"replace","path":"/spec/template/spec/containers/0/env/0/value","value":"release-2"}]'
+
+kubectl -n demo get analysisrun -w
+kubectl -n demo logs -l job-name --tail=-1
+```
+
+Set `PODINFO_RANDOM_ERROR=true` in a release to see a DEGRADED verdict.
+
+## Known issues
+
+- On host clusters whose own Argo Rollouts watches `vc-*` namespaces, the host
+  controller strips `rollouts-pod-template-hash` from synced blue-green
+  Services, so follow-up releases are treated as initial deploys and analysis
+  never runs. Check that `podinfo-active` keeps its hash selector after release-1.
+- `metrics-agent` can fail with `400 Bad Request` from the model on follow-up
+  calls, leaving the report INCONCLUSIVE.

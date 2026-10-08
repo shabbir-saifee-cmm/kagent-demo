@@ -1,0 +1,96 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: promotion-report
+  namespace: demo
+spec:
+  args:
+    - name: rollout
+    - name: blue-hash
+    - name: green-hash
+    - name: observe-seconds
+      value: "90"
+    - name: agent-url
+      value: http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent/promotion-manager/
+  metrics:
+    - name: promotion-report
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 1200
+            template:
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 10001
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: report
+                    image: python:3.12-alpine
+                    env:
+                      - name: NAMESPACE
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
+                      - name: ROLLOUT
+                        value: "{{args.rollout}}"
+                      - name: BLUE_HASH
+                        value: "{{args.blue-hash}}"
+                      - name: GREEN_HASH
+                        value: "{{args.green-hash}}"
+                      - name: OBSERVE_SECONDS
+                        value: "{{args.observe-seconds}}"
+                      - name: AGENT_URL
+                        value: "{{args.agent-url}}"
+                      - name: PYTHONUNBUFFERED
+                        value: "1"
+                    command: ["python", "-c"]
+                    args:
+                      - |
+                        import json, os, time, urllib.request, uuid
+
+                        ns, rollout = os.environ["NAMESPACE"], os.environ["ROLLOUT"]
+                        blue, green = os.environ["BLUE_HASH"], os.environ["GREEN_HASH"]
+                        observe = int(os.environ["OBSERVE_SECONDS"])
+                        window = f"{max(observe // 60 + 5, 10)}m"
+
+                        print(f"Promotion of {ns}/{rollout}: blue={blue} -> green={green}")
+                        print(f"Observing green for {observe}s before analysis...")
+                        time.sleep(observe)
+
+                        text = (f"Post-promotion report: {ns}/{rollout}. namespace={ns} rollout={rollout} "
+                                f"blueHash={blue} greenHash={green} window={window}")
+                        body = {"jsonrpc": "2.0", "id": "1", "method": "message/send",
+                                "params": {"message": {"role": "user", "messageId": str(uuid.uuid4()),
+                                                       "parts": [{"kind": "text", "text": text}]}}}
+                        print(f"Asking promotion-manager: {text}\n")
+                        try:
+                            req = urllib.request.Request(os.environ["AGENT_URL"], json.dumps(body).encode(),
+                                                         {"Content-Type": "application/json"})
+                            with urllib.request.urlopen(req, timeout=900) as resp:
+                                result = json.load(resp)
+                            if "error" in result:
+                                print("Agent error:", result["error"])
+                            else:
+                                task = result["result"]
+                                parts = [p.get("text", "") for a in task.get("artifacts", []) for p in a.get("parts", [])
+                                         if p.get("kind") == "text"]
+                                print("\n".join(parts) or json.dumps(task.get("status"), indent=2))
+                        except Exception as e:
+                            print(f"Promotion report unavailable: {e}")
+                        print("\nAdvisory only: this analysis never blocks or rolls back the release.")
+                    resources:
+                      requests:
+                        cpu: 10m
+                        memory: 32Mi
+                      limits:
+                        cpu: 200m
+                        memory: 128Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop: ["ALL"]

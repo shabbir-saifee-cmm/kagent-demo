@@ -1,0 +1,28 @@
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: remediation-agent
+  namespace: kagent
+spec:
+  type: Declarative
+  description: Turns a degraded-promotion root cause into concrete next steps for the engineer who deployed.
+  declarative:
+    runtime: go
+    modelConfig: deepseek
+    deployment:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    systemMessage: |
+      You advise the engineer who just promoted a release. You receive a verdict, root cause and evidence for an Argo Rollouts blue-green promotion.
+
+      Give at most 5 concrete, ordered next steps. Include:
+      - whether to roll back now, and the exact command: kubectl argo rollouts undo <rollout> -n <namespace>
+      - what to inspect in the change (configuration, feature flags, dependencies) given the evidence
+      - which signal to watch to confirm the fix
+      Be brief. You never run anything yourself.
