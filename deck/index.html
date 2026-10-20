@@ -213,6 +213,36 @@
   .hnode.future { border-style: dashed; background: transparent; }
   .hnode.future.det { border-color: rgba(157,140,255,.55); }
   .hnode.future.det .kind { background: var(--violet-soft); color: var(--violet); }
+
+  /* Screenshot placeholders */
+  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; margin-top: 30px; }
+  .shot { height: 170px; border: 2px dashed var(--line); border-radius: 16px; background: rgba(255,255,255,0.015); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--dim); }
+  .shot svg { width: 44px; height: 44px; }
+  .shot .lbl { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+  .shot-cap { margin-top: 10px; font-size: 15.5px; color: var(--muted); text-align: center; }
+
+  /* Pricing table */
+  .pricing { display: grid; grid-template-columns: 1fr 56px 1fr; align-items: stretch; gap: 20px; margin-top: 24px; }
+  .price-group { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px 28px 20px; }
+  .price-group h3 { font-size: 23px; font-weight: 650; letter-spacing: -0.01em; }
+  .price-group .sub { font-family: var(--mono); font-size: 13px; color: var(--dim); margin-top: 4px; margin-bottom: 16px; }
+  .price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .price-row:first-of-type { border-top: none; }
+  .price-row .model { font-size: 18px; color: var(--text); }
+  .price-row .price { font-family: var(--mono); font-size: 15px; color: var(--muted); white-space: nowrap; }
+  .price-row .price b { color: var(--accent); font-weight: 600; }
+  .price-row.gap { border: 1.5px dashed rgba(157,140,255,.55); border-radius: 10px; padding: 10px 14px; margin-bottom: 2px; background: transparent; justify-content: center; }
+  .price-row.gap .model { color: var(--violet); font-style: italic; }
+
+  /* Dashed connectors tying each pricing row to its rough counterpart */
+  .price-link { display: flex; flex-direction: column; }
+  .price-link .lhead { visibility: hidden; }
+  .price-link .lhead h3 { font-size: 23px; font-weight: 650; margin: 0; }
+  .price-link .lhead .sub { font-family: var(--mono); font-size: 13px; margin-top: 4px; margin-bottom: 16px; }
+  .price-link .ltier { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .price-link .ltier::before { content: ""; width: 100%; border-top: 2px dashed var(--line); }
+  .price-link .ltier.on::before { border-top-color: var(--violet); }
+
   .hint { position: fixed; right: 18px; bottom: 14px; font-family: var(--mono); font-size: 12px; color: var(--dim); opacity: .6; }
 </style>
 </head>
@@ -469,7 +499,91 @@
       </div>
     </section>
 
-    <!-- 5. IDP to AEP -->
+    <!-- 5. Classifier patterns -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Advanced classifier patterns</div>
+      <h2 style="font-size:48px">Where a cheap classifier call beats a workflow</h2>
+      <div class="cards c3">
+        <div class="card">
+          <span class="chip" style="display:inline-block;margin-bottom:18px">Pre-merge</span>
+          <h3>Platform-rules CI check</h3>
+          <p>On every PR, one low-cost “System 1” Jev call reads the diff against the platform's guardrails — naming conventions, workload identity over static credentials, forbidden patterns — and flags violations before a human reviewer looks at it. No agent loop, no tools: one prompt in, a pass/fail with a reason out.</p>
+        </div>
+        <div class="card">
+          <span class="chip" style="display:inline-block;margin-bottom:18px">Planning cadence</span>
+          <h3>Sprint-fit scoring</h3>
+          <p>“Which sprint does this ticket belong in?” A classifier call scores a ticket's readiness, dependencies and size against the current and next sprint during refinement, surfacing a recommendation instead of a human eyeballing the backlog by hand.</p>
+        </div>
+        <div class="card">
+          <span class="chip" style="display:inline-block;margin-bottom:18px">On-call</span>
+          <h3>Support ticket routing</h3>
+          <p>Classify an incoming ticket as platform-owned vs. app-team-owned and route it to the right queue automatically, removing a manual triage step from the on-call rotation.</p>
+        </div>
+      </div>
+      <p class="note"><b>One prompt in, a structured label out.</b> The cost of being wrong is a missed label, not a bad deploy — so the cheapest capable model is the right default here.</p>
+    </section>
+
+    <!-- 6. In-cluster harness -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">In-cluster development</div>
+      <h2 style="font-size:46px">Your companion harness doesn't have to live on your laptop</h2>
+      <p class="lede" style="margin-top:10px;font-size:21px">The coding harness you work beside all day doesn't need one engineer's laptop to stay open — it can run as a workload inside the cluster. Here it's the DeepSeek harness.</p>
+      <div class="shots">
+        <div>
+          <div class="shot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            <span class="lbl">Screenshot pending</span>
+          </div>
+          <p class="shot-cap">DeepSeek harness running in-cluster — session view</p>
+        </div>
+        <div>
+          <div class="shot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="11" height="8" rx="1.5"/><rect x="16" y="9" width="6" height="10" rx="1.5"/><path d="M8 17v2M13 9l3-1"/></svg>
+            <span class="lbl">Screenshot pending</span>
+          </div>
+          <p class="shot-cap">Handoff: resuming the same session from a different device</p>
+        </div>
+      </div>
+      <p class="note step-el" data-step="1" style="margin-top:16px;font-size:19px">Session persists independent of a laptop sleeping, closing or disconnecting — pick the session back up from any device.</p>
+      <p class="note step-el" data-step="2" style="margin-top:16px;font-size:19px">Unlocks “overflow tasks”: opportunistic backlog work that doesn't need a named individual driving it, since the harness runs under a team or service identity rather than a personal laptop session.</p>
+      <p class="note step-el" data-step="3" style="margin-top:16px;font-size:19px">When the harness is a platform workload, its usage is metered and billed against a team/project budget rather than routed through one developer's personal seat or API key.</p>
+    </section>
+
+    <!-- 7. Cost per token -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Cost-per-token</div>
+      <h2 style="font-size:48px">What it costs to run this way</h2>
+      <p style="margin-top:8px;font-family:var(--mono);font-size:14px;color:var(--dim)">USD per 1M tokens · rows align by rough capability tier, cheapest to priciest</p>
+      <div class="pricing">
+        <div class="price-group">
+          <h3>Claude</h3>
+          <div class="sub">Anthropic API · Claude Code</div>
+          <div class="price-row gap"><span class="model">No System 1 tier</span></div>
+          <div class="price-row"><span class="model">Sonnet 5</span><span class="price"><b>$2.00</b> in / <b>$10.00</b> out</span></div>
+          <div class="price-row"><span class="model">Opus 5</span><span class="price"><b>$5.00</b> in / <b>$25.00</b> out</span></div>
+          <div class="price-row"><span class="model">Fable 5.1</span><span class="price"><b>$10.00</b> in / <b>$50.00</b> out</span></div>
+        </div>
+        <div class="price-link">
+          <div class="lhead"><h3>&nbsp;</h3><div class="sub">&nbsp;</div></div>
+          <div class="ltier on"></div>
+          <div class="ltier"></div>
+          <div class="ltier"></div>
+          <div class="ltier"></div>
+        </div>
+        <div class="price-group">
+          <h3>Microsoft Foundry</h3>
+          <div class="sub">serverless · K3 via Fireworks AI partner</div>
+          <div class="price-row"><span class="model">Microsoft Decision 1 <span style="color:var(--dim);font-size:13px">(System 1)</span></span><span class="price"><b>$0.042</b> in / <b>free</b> out</span></div>
+          <div class="price-row"><span class="model">DeepSeek V4 Flash</span><span class="price"><b>$0.19–0.30</b> in / <b>$0.51–1.20</b> out</span></div>
+          <div class="price-row"><span class="model">Kimi K2 Thinking</span><span class="price"><b>$0.47–0.60</b> in / <b>$1.20–2.50</b> out</span></div>
+          <div class="price-row"><span class="model">Kimi K3</span><span class="price"><b>~$3.30</b> in / <b>~$16.50</b> out</span></div>
+        </div>
+      </div>
+      <p style="margin-top:16px;font-family:var(--mono);font-size:13.5px;color:var(--dim);line-height:1.5;max-width:1300px">Claude pricing is the same first-party rate whether called directly or via Claude on Microsoft Foundry (billed through the Marketplace). Prompt caching cuts repeated-context cost further — cached reads run at roughly 1/10th the base input price. Azure AI Foundry was renamed Microsoft Foundry in Jan 2026; plain "Kimi K2" is deprecated there in favor of K2 Thinking. Foundry row prices are pulled from secondary trackers or provided directly (the official pricing pages render client-side) — verify in-portal before presenting, especially Microsoft Decision 1 and the K3 row.</p>
+      <p class="note" style="margin-top:20px"><b>Pick the cheapest capable model per task:</b> a System 1 classifier call and a System 2 coding session don't belong on the same price tier. Metering usage per workload — not per developer seat — is what makes “overflow task” budgeting legible.</p>
+    </section>
+
+    <!-- 8. IDP to AEP -->
     <section class="slide" style="padding-top:70px">
       <div class="eyebrow">What's next</div>
       <h2 style="font-size:52px">From IDP to <span class="accent">AEP</span></h2>
@@ -505,7 +619,7 @@
       <p class="note step-el" data-step="2" style="--d:.6s"><b>Lava is the deterministic foundation:</b> paths, policy and identity already exist for apps. Agents inherit them.</p>
     </section>
 
-    <!-- 6. Community themes -->
+    <!-- 9. Community themes -->
     <section class="slide" style="padding-top:70px">
       <div class="eyebrow">What I'm hearing across the platform community</div>
       <h2 style="font-size:48px">Where platform teams are heading</h2>
