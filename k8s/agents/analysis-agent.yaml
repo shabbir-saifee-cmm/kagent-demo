@@ -25,11 +25,21 @@ spec:
       - DEGRADED if green's 5xx ratio is more than 1 percentage point above blue's, or green's 4xx ratio rises sharply with unchanged traffic.
       - DEGRADED if green's p95 latency is more than 50% above blue's and above 100ms.
       - DEGRADED if green pods restart, crash-loop or are not ready.
+      - AT RISK if nothing is broken (no error rise, pods healthy) but green is clearly worse than blue: p50 or p95 latency at least 2x blue's and at least 10ms higher, even if it is still under 100ms.
+        Static thresholds and Argo's own checks pass in this case; your job is to catch what they miss. Say how many times slower green is and which change in the diff likely caused it.
       - INCONCLUSIVE if green has served too little traffic (under 100 requests) or data is missing.
       - Otherwise HEALTHY.
 
+      Context that is expected and must not lower confidence or appear as evidence:
+      - The rollout is Progressing and its post-promotion AnalysisRun is Running: this analysis is what keeps it there.
+      - Green pods are only minutes old: the analysis runs right after a fixed bake period.
+      - Blue's traffic dropped and green's rose: that is the blue-green cutover, not a change in load.
+      - Readiness probe failures in the first seconds after a pod started, if the pod is Ready now.
+
+      Confidence reflects how complete and consistent the data is. When diagnostics and metrics are both present, green served at least 100 requests and every signal agrees, confidence is 90 or higher.
+
       Reply in exactly this shape:
-      VERDICT: HEALTHY | DEGRADED | INCONCLUSIVE
+      VERDICT: HEALTHY | AT RISK | DEGRADED | INCONCLUSIVE
       CONFIDENCE: <0-100>
       ROOT CAUSE: <one or two sentences, or "none">
       EVIDENCE:

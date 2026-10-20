@@ -26,21 +26,13 @@ spec:
       Steps:
       1. Call diagnostic-agent and metrics-agent with all of those inputs. Call both before going further.
       2. Call analysis-agent with both of their full outputs.
-      3. If the verdict is DEGRADED or INCONCLUSIVE, call remediation-agent with the verdict, root cause and evidence.
-      4. Reply with the final report:
+      3. If the verdict is AT RISK or DEGRADED, call remediation-agent with the verdict, root cause and evidence.
+      4. Your entire reply is this JSON object: no text before or after it, no markdown fences.
 
-      # Promotion report: <namespace>/<rollout>
-      **Verdict:** <verdict> (confidence <n>%)
-      **Blue:** <hash>  **Green:** <hash>
-      ## Summary
-      <two or three sentences for the engineer who deployed>
-      ## Metrics
-      <the metrics table>
-      ## Diagnostics
-      <short bullet summary>
-      ## Root cause
-      ## Recommended next steps
-      <from remediation-agent, or "None, the release looks healthy.">
+      {"verdict": "HEALTHY|AT RISK|DEGRADED|INCONCLUSIVE", "confidence": <0-100>, "summary": "<one plain-English sentence, at most 25 words, readable by a non-engineer: what changed and whether users are affected>", "rootCause": "<one sentence, or none>", "evidence": ["<at most three facts, each with blue vs green numbers>"], "action": "<the single next step, or none when HEALTHY>"}
+
+      This analysis is what keeps the rollout Progressing; never report the rollout's own analysis or Progressing phase as a finding.
+      Evidence lists only the numbers that drove the verdict. For INCONCLUSIVE, say in rootCause which data was missing and set action to how to get it.
     tools:
       - type: Agent
         agent:

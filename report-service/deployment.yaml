@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: report-service
+  template:
+    metadata:
+      labels:
+        app: report-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: report-service
+          image: python:3.12-alpine
+          command: ["python", "/app/report_service.py"]
+          env:
+            - name: AGENT_URL
+              value: http://kagent-controller.kagent.svc.cluster.local:8083/api/a2a/kagent/promotion-manager/
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: app
+          configMap:
+            name: report-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: report-service
+spec:
+  selector:
+    app: report-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

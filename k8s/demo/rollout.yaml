@@ -53,8 +53,12 @@ spec:
               value: "false"
             - name: PODINFO_RANDOM_DELAY
               value: "false"
+            - name: PODINFO_RANDOM_DELAY_MIN
+              value: "20"
             - name: PODINFO_RANDOM_DELAY_MAX
-              value: "3"
+              value: "40"
+            - name: PODINFO_RANDOM_DELAY_UNIT
+              value: ms
           readinessProbe:
             tcpSocket:
               port: http

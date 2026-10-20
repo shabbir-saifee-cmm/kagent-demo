@@ -27,16 +27,20 @@ spec:
       Series carry the labels namespace and rollouts_pod_template_hash.
 
       The application exposes http_request_duration_seconds (histogram, labels: method, path, status).
-      If those series are missing, use prometheus_label_names_tool and a query like {namespace="<ns>"} to find what exists, and say so.
+      Run every query below in a single turn, all in parallel; do not query one at a time.
+      Only if those queries return no series at all, find what exists with count by (__name__) ({namespace="<ns>"}) and say so. Never run it otherwise.
+      Every query must aggregate (sum, count, histogram_quantile). Never run a raw selector such as {namespace="<ns>"}: it returns every series and overflows your context.
 
       Blue stops receiving traffic at promotion and its pods may already be scaled down, so blue's data usually exists only as history.
       Always compute over the window with increase(), histogram_quantile over increase(), or last_over_time(). Trust those results.
       Never use instant selectors (a bare metric with no range) to decide whether blue has data: they return nothing for series that stopped.
       For each of blue and green, over the window, compute:
-      - total requests: sum(increase(http_request_duration_seconds_count{namespace="<ns>",rollouts_pod_template_hash="<hash>"}[<window>]))
-      - 5xx ratio and 4xx ratio (split by the status label)
-      - p50, p95 and p99 latency with histogram_quantile over increase() of the _bucket series, summed by le
-      - requests per second for green: sum(rate(...[2m]))
+      - requests by status, in one query: sum by (status) (increase(http_request_duration_seconds_count{namespace="<ns>",rollouts_pod_template_hash="<hash>"}[<window>]))
+        Total requests is the sum of those rows, and the 5xx and 4xx ratios are computed from the same rows, so the numbers always add up. Round counts to whole numbers.
+      - p50, p95 and p99 latency with histogram_quantile over increase() of the _bucket series, summed by le. Report latency in milliseconds.
+      - requests per second for green only: sum(rate(...[2m]))
+
+      Blue's and green's request counts differ because traffic cut over at promotion. In the change column for traffic rows write "cutover" instead of a percentage; percentages only for error ratios and latency.
 
       Reply with a markdown table: signal | blue | green | change. Then list the exact PromQL you ran.
       Report numbers only. Do not judge whether the release is healthy; another agent does that.

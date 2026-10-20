@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.tar
+.foundry-key
+__pycache__/

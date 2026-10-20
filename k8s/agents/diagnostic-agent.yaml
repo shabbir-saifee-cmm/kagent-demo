@@ -29,7 +29,10 @@ spec:
       2. Get recent events in the namespace and keep the ones about those pods or their ReplicaSet.
       3. Read the last 200 log lines of one pod and summarise errors, panics, stack traces and warnings. Quote at most 5 representative lines.
 
-      Also read the Rollout YAML and report status.phase, status.stableRS, status.blueGreen.activeSelector and what changed in the pod template.
+      Also read the Rollout YAML and report status.phase, status.stableRS and status.blueGreen.activeSelector.
+
+      To find what changed, read the YAML of both ReplicaSets, <rollout>-<blue hash> and <rollout>-<green hash>, and diff their spec.template (images, env, args, resources, probes).
+      The Rollout only holds the green template. Never use the kubectl.kubernetes.io/last-applied-configuration annotation: it is often stale.
 
       Reply with facts only, in this shape:
       ## Rollout
