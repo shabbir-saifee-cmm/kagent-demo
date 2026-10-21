@@ -157,6 +157,9 @@
   .rung.next .tag { background: var(--violet); color: #1a1340; }
   .note.step-el { transform: translateY(10px); }
   .note.step-el.shown { transform: none; }
+  .auto-in { opacity: 0; transform: translateY(10px); }
+  .slide.active .auto-in { animation: autoFadeUp .6s ease forwards; animation-delay: var(--d, 0s); }
+  @keyframes autoFadeUp { to { opacity: 1; transform: none; } }
   .ref { grid-template-columns: 170px 1fr; font-size: 15.5px; }
   .refs { gap: 7px; margin-top: 12px; }
   .themes { gap: 16px; margin-top: 22px; margin-bottom: 30px; }
@@ -215,11 +218,14 @@
   .hnode.future.det .kind { background: var(--violet-soft); color: var(--violet); }
 
   /* Screenshot placeholders */
-  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; margin-top: 30px; }
-  .shot { height: 170px; border: 2px dashed var(--line); border-radius: 16px; background: rgba(255,255,255,0.015); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--dim); }
+  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; margin-top: 24px; flex: 1; min-height: 0; }
+  .shots > div { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .shot { flex: 1; min-height: 0; border: 2px dashed var(--line); border-radius: 16px; background: rgba(255,255,255,0.015); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--dim); overflow: hidden; }
   .shot svg { width: 44px; height: 44px; }
   .shot .lbl { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
-  .shot-cap { margin-top: 10px; font-size: 15.5px; color: var(--muted); text-align: center; }
+  .shot.filled { border-style: solid; border-color: var(--line); padding: 0; }
+  .shot.filled img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--stage); }
+  .shot-cap { flex: none; margin-top: 10px; font-size: 15.5px; color: var(--muted); text-align: center; }
 
   /* Pricing table */
   .pricing { display: grid; grid-template-columns: 1fr 56px 1fr; align-items: stretch; gap: 20px; margin-top: 24px; }
@@ -530,23 +536,17 @@
       <p class="lede" style="margin-top:10px;font-size:21px">The coding harness you work beside all day doesn't need one engineer's laptop to stay open — it can run as a workload inside the cluster. Here it's the DeepSeek harness.</p>
       <div class="shots">
         <div>
-          <div class="shot">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            <span class="lbl">Screenshot pending</span>
-          </div>
+          <div class="shot filled"><img src="img/deepseek-harness-session.png" alt="DeepSeek harness running in-cluster, showing a chat session"></div>
           <p class="shot-cap">DeepSeek harness running in-cluster — session view</p>
         </div>
         <div>
-          <div class="shot">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="11" height="8" rx="1.5"/><rect x="16" y="9" width="6" height="10" rx="1.5"/><path d="M8 17v2M13 9l3-1"/></svg>
-            <span class="lbl">Screenshot pending</span>
-          </div>
+          <div class="shot filled"><img src="img/deepseek-harness-handoff.png" alt="Resuming the same harness session from a different client"></div>
           <p class="shot-cap">Handoff: resuming the same session from a different device</p>
         </div>
       </div>
-      <p class="note step-el" data-step="1" style="margin-top:16px;font-size:19px">Session persists independent of a laptop sleeping, closing or disconnecting — pick the session back up from any device.</p>
-      <p class="note step-el" data-step="2" style="margin-top:16px;font-size:19px">Unlocks “overflow tasks”: opportunistic backlog work that doesn't need a named individual driving it, since the harness runs under a team or service identity rather than a personal laptop session.</p>
-      <p class="note step-el" data-step="3" style="margin-top:16px;font-size:19px">When the harness is a platform workload, its usage is metered and billed against a team/project budget rather than routed through one developer's personal seat or API key.</p>
+      <p class="note auto-in" style="margin-top:16px;font-size:19px;--d:.15s">Session persists independent of a laptop sleeping, closing or disconnecting — pick the session back up from any device.</p>
+      <p class="note auto-in" style="margin-top:16px;font-size:19px;--d:.4s">Unlocks “overflow tasks”: opportunistic backlog work that doesn't need a named individual driving it, since the harness runs under a team or service identity rather than a personal laptop session.</p>
+      <p class="note auto-in" style="margin-top:16px;font-size:19px;--d:.65s">When the harness is a platform workload, its usage is metered and billed against a team/project budget rather than routed through one developer's personal seat or API key.</p>
     </section>
 
     <!-- 7. Cost per token -->
