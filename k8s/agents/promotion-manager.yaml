@@ -56,4 +56,4 @@ spec:
             - blue-green
             - analysis
           examples:
-            - "Analyze promotion. namespace=demo rollout=podinfo blueHash=6c8679fffd greenHash=9bd488744 window=10m"
+            - "Analyze promotion. namespace=demo rollout=demo-app blueHash=6c8679fffd greenHash=9bd488744 window=10m"

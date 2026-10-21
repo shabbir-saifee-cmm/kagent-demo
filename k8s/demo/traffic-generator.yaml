@@ -26,7 +26,7 @@ spec:
             - |
               while true; do
                 for path in / /api/info /env /headers; do
-                  curl -s -o /dev/null -m 5 "http://podinfo-active.demo.svc.cluster.local$path"
+                  curl -s -o /dev/null -m 5 "http://demo-app-active.demo.svc.cluster.local$path"
                 done
                 sleep 0.2
               done

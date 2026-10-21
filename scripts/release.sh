@@ -8,7 +8,7 @@ set -euo pipefail
 version="$1"
 mode="${2:-healthy}"
 ns=demo
-rollout=podinfo
+rollout=demo-app
 
 case "$mode" in
   healthy) delay=false errors=false ;;

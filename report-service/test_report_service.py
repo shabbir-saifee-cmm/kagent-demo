@@ -14,7 +14,7 @@ REPORT = {
     "summary": "Green returns 5xx.",
     "rootCause": "PODINFO_RANDOM_ERROR enabled",
     "evidence": ["5xx 12% vs 0%"],
-    "action": "kubectl argo rollouts undo podinfo -n demo",
+    "action": "kubectl argo rollouts undo demo-app -n demo",
 }
 
 
@@ -105,19 +105,19 @@ class HandlerTest(unittest.TestCase):
             return r.status, json.load(r)
 
     def test_report_returns_agent_json(self):
-        status, body = self.get("/report?namespace=demo&rollout=podinfo&blue=aaa&green=bbb&window=10m")
+        status, body = self.get("/report?namespace=demo&rollout=demo-app&blue=aaa&green=bbb&window=10m")
         self.assertEqual(status, 200)
         self.assertEqual(body["verdict"], "DEGRADED")
-        self.assertEqual(body["assessment"], "DEGRADED · 91% confidence: Green returns 5xx. Next step: kubectl argo rollouts undo podinfo -n demo")
-        self.assertEqual(self.requests, [{"namespace": "demo", "rollout": "podinfo", "blue": "aaa", "green": "bbb", "window": "10m"}])
+        self.assertEqual(body["assessment"], "DEGRADED · 91% confidence: Green returns 5xx. Next step: kubectl argo rollouts undo demo-app -n demo")
+        self.assertEqual(self.requests, [{"namespace": "demo", "rollout": "demo-app", "blue": "aaa", "green": "bbb", "window": "10m"}])
 
     def test_window_defaults_to_10m(self):
-        self.get("/report?namespace=demo&rollout=podinfo&blue=aaa&green=bbb")
+        self.get("/report?namespace=demo&rollout=demo-app&blue=aaa&green=bbb")
         self.assertEqual(self.requests[0]["window"], "10m")
 
     def test_missing_param_is_400(self):
         with self.assertRaises(urllib.error.HTTPError) as e:
-            self.get("/report?namespace=demo&rollout=podinfo&blue=aaa")
+            self.get("/report?namespace=demo&rollout=demo-app&blue=aaa")
         self.assertEqual(e.exception.code, 400)
 
     def test_agent_failure_is_502(self):
@@ -126,7 +126,7 @@ class HandlerTest(unittest.TestCase):
 
         self.server.RequestHandlerClass = make_handler(ReportCache(), broken)
         with self.assertRaises(urllib.error.HTTPError) as e:
-            self.get("/report?namespace=demo&rollout=podinfo&blue=aaa&green=bbb")
+            self.get("/report?namespace=demo&rollout=demo-app&blue=aaa&green=bbb")
         self.assertEqual(e.exception.code, 502)
 
     def test_healthz(self):

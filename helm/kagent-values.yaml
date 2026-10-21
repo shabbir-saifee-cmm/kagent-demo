@@ -37,3 +37,12 @@ cilium-manager-agent:
   enabled: false
 cilium-debug-agent:
   enabled: false
+
+otel:
+  tracing:
+    enabled: true
+    exporter:
+      otlp:
+        endpoint: http://jaeger.observability.svc.cluster.local:4317
+        protocol: grpc
+        insecure: true

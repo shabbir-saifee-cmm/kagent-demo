@@ -1,25 +1,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: podinfo
+  name: demo-app
   namespace: demo
 spec:
   replicas: 2
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app: podinfo
+      app: demo-app
   strategy:
     blueGreen:
-      activeService: podinfo-active
-      previewService: podinfo-preview
+      activeService: demo-app-active
+      previewService: demo-app-preview
       autoPromotionEnabled: true
       postPromotionAnalysis:
         templates:
           - templateName: promotion-report
         args:
           - name: rollout
-            value: podinfo
+            value: demo-app
           - name: blue-hash
             valueFrom:
               podTemplateHashValue: Stable
@@ -29,7 +29,7 @@ spec:
   template:
     metadata:
       labels:
-        app: podinfo
+        app: demo-app
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9898"
@@ -41,7 +41,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: podinfo
+        - name: demo-app
           image: ghcr.io/stefanprodan/podinfo:6.7.0
           ports:
             - name: http
