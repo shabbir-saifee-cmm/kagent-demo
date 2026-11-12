@@ -17,6 +17,8 @@ the old (blue) one. The verdict shows up in the Argo Rollouts dashboard as one
 
 The analysis is `dryRun`: it never blocks, promotes or rolls back the release.
 
+Paged? Ask the oncall agent.
+
 | Agent | Role |
 |---|---|
 | `promotion-manager` | Orchestrates the others over A2A and returns the final report as JSON |
