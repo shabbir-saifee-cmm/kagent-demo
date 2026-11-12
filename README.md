@@ -3,6 +3,8 @@
 Advisory post-promotion analysis for Argo Rollouts blue-green releases, run by
 a team of native kagent agents on an ephemeral vcluster.
 
+Paged?
+
 When the `demo-app` Rollout promotes, its `postPromotionAnalysis` waits for the
 green pods to bake, then asks the agents to compare the new (green) version with
 the old (blue) one. The verdict shows up in the Argo Rollouts dashboard as one
