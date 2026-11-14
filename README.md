@@ -174,3 +174,5 @@ slide that follows the live demo.
   if both attempts stall the verdict is INCONCLUSIVE ("The agents did not finish").
   Re-release to try again.
 - Jaeger stores traces in memory; they are lost if its pod restarts.
+
+Rehearsal run by the cmm account.
