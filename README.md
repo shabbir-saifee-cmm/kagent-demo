@@ -1,7 +1,8 @@
 # kagent promotion analysis
 
 Advisory post-promotion analysis for Argo Rollouts blue-green releases, run by
-a team of native kagent agents on an ephemeral vcluster.
+a team of native kagent agents on an ephemeral vcluster. The analysis is
+read-only: it reports a verdict but never promotes, blocks or rolls back.
 
 When the `demo-app` Rollout promotes, its `postPromotionAnalysis` waits for the
 green pods to bake, then asks the agents to compare the new (green) version with
