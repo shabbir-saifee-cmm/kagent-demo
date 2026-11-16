@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agents on Lava · Level 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e13;
+    --stage: #0f131a;
+    --panel: #161b23;
+    --panel-2: #1c2330;
+    --line: #2a3342;
+    --text: #e8edf4;
+    --muted: #8d98a8;
+    --dim: #5b6676;
+    --accent: #5ac8b8;
+    --accent-soft: rgba(90, 200, 184, 0.14);
+    --violet: #9d8cff;
+    --violet-soft: rgba(157, 140, 255, 0.14);
+    --healthy: #3fb950;
+    --healthy-soft: rgba(63, 185, 80, 0.14);
+    --risk: #e3b341;
+    --risk-soft: rgba(227, 179, 65, 0.14);
+    --bad: #f85149;
+    --bad-soft: rgba(248, 81, 73, 0.14);
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+
+  .viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+  .stage {
+    width: 1600px; height: 900px; position: relative; flex: none;
+    background: radial-gradient(1200px 700px at 85% -10%, rgba(90,200,184,0.07), transparent 60%),
+                radial-gradient(900px 600px at -10% 110%, rgba(157,140,255,0.06), transparent 60%),
+                var(--stage);
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    transform-origin: center center;
+  }
+  .grid-bg {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .slide {
+    position: absolute; inset: 0; padding: 90px 110px 100px;
+    display: flex; flex-direction: column;
+    opacity: 0; visibility: hidden; transform: translateY(14px);
+    transition: opacity .45s ease, transform .45s ease, visibility 0s linear .45s;
+  }
+  .slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity .45s ease, transform .45s ease; }
+
+  .eyebrow { font-family: var(--mono); font-size: 18px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px; }
+  h1 { font-size: 92px; line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; }
+  h2 { font-size: 58px; line-height: 1.08; font-weight: 700; letter-spacing: -0.025em; max-width: 1300px; }
+  .lede { font-size: 28px; line-height: 1.45; color: var(--muted); max-width: 1150px; margin-top: 26px; }
+  .muted { color: var(--muted); }
+  .accent { color: var(--accent); }
+  .mono { font-family: var(--mono); }
+
+  .footer {
+    position: absolute; left: 110px; right: 110px; bottom: 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 15px; color: var(--dim); letter-spacing: .06em;
+  }
+  .progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .45s ease; }
+
+  /* Title */
+  .title-slide { justify-content: center; }
+  .title-slide h1 .hl { background: linear-gradient(90deg, var(--accent), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .title-meta { margin-top: 54px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 17px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: rgba(255,255,255,0.02); }
+
+  /* Cards */
+  .cards { display: grid; gap: 22px; margin-top: 50px; }
+  .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cards.c4 { grid-template-columns: repeat(4, 1fr); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px 28px 30px; }
+  .card h3 { font-size: 25px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 10px; }
+  .card p { font-size: 19px; line-height: 1.5; color: var(--muted); }
+  .card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 20px; background: var(--accent-soft); color: var(--accent); }
+  .card .ico svg { width: 24px; height: 24px; }
+  .card.gap { border-style: dashed; background: transparent; }
+  .card.gap .ico { background: var(--violet-soft); color: var(--violet); }
+
+  .split-bar { margin-top: 44px; display: flex; align-items: center; gap: 22px; }
+  .bar { flex: 1; height: 14px; border-radius: 999px; background: var(--panel-2); overflow: hidden; display: flex; }
+  .bar .done { width: 90%; background: linear-gradient(90deg, var(--accent), #4aa9c9); }
+  .bar .todo { width: 10%; background: repeating-linear-gradient(45deg, var(--violet) 0 6px, transparent 6px 12px); opacity: .7; }
+  .split-bar .lbl { font-family: var(--mono); font-size: 17px; color: var(--muted); white-space: nowrap; }
+
+  /* Architecture */
+  .arch-wrap { flex: 1; display: flex; gap: 40px; margin-top: 26px; min-height: 0; }
+  .arch-wrap svg { flex: 1; height: 100%; }
+  .legend { display: flex; gap: 26px; margin-top: 10px; font-size: 17px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 10px; }
+  .legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+  .d-box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+  .d-agent { fill: var(--panel-2); stroke: var(--accent); stroke-width: 2; }
+  .d-mcp { fill: var(--panel-2); stroke: #4aa9c9; stroke-width: 1.8; }
+  .d-model { fill: var(--panel-2); stroke: var(--violet); stroke-width: 1.8; }
+  .d-pill { fill: var(--violet-soft); stroke: var(--violet); stroke-width: 1.2; }
+  .d-pill-txt { fill: #c9c0ff; font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .d-skill { fill: var(--panel-2); stroke: var(--risk); stroke-width: 1.6; }
+  .d-label { fill: var(--text); font-family: var(--sans); font-size: 19px; font-weight: 600; }
+  .d-sub { fill: var(--muted); font-family: var(--mono); font-size: 13.5px; }
+  .d-zone { fill: var(--muted); font-family: var(--mono); font-size: 15px; letter-spacing: .12em; text-transform: uppercase; }
+  .d-flow { fill: none; stroke: var(--dim); stroke-width: 1.8; }
+  .d-flow.agent { stroke: var(--accent); }
+  .d-flow.mcp { stroke: #4aa9c9; }
+  .d-flow.model { stroke: var(--violet); }
+  .d-flow.skill { stroke: var(--risk); stroke-dasharray: 6 6; }
+
+  .caps { position: relative; height: 40px; margin-top: 14px; }
+  .cap { position: absolute; inset: 0; font-size: 23px; color: var(--muted); }
+  .step-el { opacity: 0; transition: opacity .5s ease, transform .5s ease, stroke-dashoffset .8s ease; }
+  g.step-el, .cap.step-el { transform: translateY(10px); transform-box: fill-box; transform-origin: center; }
+  g.step-el.pop { transform: scale(.6); }
+  .step-el.shown, g.step-el.pop.shown { opacity: 1; transform: none; transition-delay: var(--d, 0s); }
+  .step-dots { display: inline-flex; gap: 8px; }
+  .step-dots b { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background .3s; }
+  .step-dots b.on { background: var(--accent); }
+  .themes { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 20px; margin-top: 30px; min-height: 0; }
+  .theme { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 26px; display: flex; flex-direction: column; }
+  .theme.step-el { transform: translateY(14px); }
+  .theme.step-el.shown { transform: none; }
+  .theme-head { display: flex; align-items: baseline; gap: 14px; }
+  .theme-head .num { font-family: var(--mono); font-size: 16px; color: var(--accent); }
+  .theme-head h3 { font-size: 27px; font-weight: 700; letter-spacing: -0.015em; }
+  .theme .line { font-size: 19px; line-height: 1.45; color: var(--text); margin-top: 8px; }
+  .refs { margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+  .ref { display: grid; grid-template-columns: 150px 1fr; gap: 12px; font-size: 16px; line-height: 1.4; color: var(--muted); }
+  .ref b { color: var(--violet); font-weight: 600; }
+  .src { margin-top: auto; padding-top: 10px; font-family: var(--mono); font-size: 12.5px; color: var(--dim); }
+  .note { margin-top: 36px; font-size: 21px; color: var(--muted); }
+  .note b { color: var(--text); font-weight: 600; }
+  .quote { margin-top: 34px; padding: 26px 34px; border-left: 4px solid var(--accent); background: var(--panel); border-radius: 0 14px 14px 0; max-width: 1250px; }
+  .quote p { font-size: 32px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+  .quote cite { display: block; margin-top: 14px; font-style: normal; font-size: 17px; color: var(--muted); }
+  .ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; align-items: end; }
+  .rung { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 26px; }
+  .rung:nth-child(1) { min-height: 170px; } .rung:nth-child(2) { min-height: 200px; } .rung:nth-child(3) { min-height: 230px; } .rung:nth-child(4) { min-height: 260px; }
+  .rung .lvl { font-family: var(--mono); font-size: 15px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+  .rung h3 { font-size: 24px; margin-bottom: 8px; }
+  .rung p { font-size: 18px; line-height: 1.45; color: var(--muted); }
+  .rung.now { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--panel)); }
+  .rung.next { border-color: rgba(157,140,255,.6); border-style: dashed; }
+  .rung .tag { position: absolute; top: -13px; right: 18px; font-family: var(--mono); font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent); color: #062b26; font-weight: 600; }
+  .rung.next .tag { background: var(--violet); color: #1a1340; }
+  .note.step-el { transform: translateY(10px); }
+  .note.step-el.shown { transform: none; }
+  .auto-in { opacity: 0; transform: translateY(10px); }
+  .slide.active .auto-in { animation: autoFadeUp .6s ease forwards; animation-delay: var(--d, 0s); }
+  @keyframes autoFadeUp { to { opacity: 1; transform: none; } }
+  .ref { grid-template-columns: 170px 1fr; font-size: 15.5px; }
+  .refs { gap: 7px; margin-top: 12px; }
+  .themes { gap: 16px; margin-top: 22px; margin-bottom: 30px; }
+  .theme { padding: 18px 24px; }
+  .theme-head h3 { font-size: 25px; }
+  .theme .line { font-size: 18px; margin-top: 6px; }
+  .refs { margin-top: 10px; gap: 6px; }
+  .ref { font-size: 15px; line-height: 1.35; }
+  .src { padding-top: 8px; }
+  .quote { margin-top: 26px; padding: 20px 30px; }
+  .quote p { font-size: 28px; }
+  .ladder { margin-top: 32px; }
+  .rung:nth-child(1) { min-height: 150px; } .rung:nth-child(2) { min-height: 175px; } .rung:nth-child(3) { min-height: 200px; } .rung:nth-child(4) { min-height: 225px; }
+  .note { margin-top: 26px; }
+  .ref span { display: flex; flex-direction: column; }
+  .ref .url { font-family: var(--mono); font-size: 11.5px; color: var(--dim); text-decoration: none; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ref .url:hover { color: var(--accent); text-decoration: underline; }
+  .themes .ref { grid-template-columns: 150px 1fr; font-size: 14.5px; line-height: 1.32; }
+  .themes .refs { gap: 7px; }
+  .themes .theme .line { font-size: 17px; }
+  .themes { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .theme { min-width: 0; }
+  .themes .ref { grid-template-columns: 150px minmax(0, 1fr); }
+  .ref span { min-width: 0; }
+  .hflow { display: flex; align-items: stretch; margin-top: 40px; }
+  .hnode { flex: 1; min-width: 0; background: var(--panel); border: 1.5px solid var(--line); border-radius: 16px; padding: 20px 20px 22px; }
+  .hnode .kind { display: inline-block; font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; }
+  .hnode h3 { font-size: 24px; margin-bottom: 6px; }
+  .hnode p { font-size: 16.5px; line-height: 1.4; color: var(--muted); }
+  .hnode.det { border-color: rgba(74,169,201,.55); } .hnode.det .kind { background: rgba(74,169,201,.15); color: #4aa9c9; }
+  .hnode.llm { border-color: rgba(90,200,184,.7); } .hnode.llm .kind { background: var(--accent-soft); color: var(--accent); }
+  .hnode.typed { border-color: rgba(157,140,255,.7); } .hnode.typed .kind { background: var(--violet-soft); color: var(--violet); }
+  .hnode.step-el, .hrefs .theme.step-el, .hlegend.step-el { transform: translateY(12px); }
+  .hnode.step-el.shown, .hrefs .theme.step-el.shown, .hlegend.step-el.shown { transform: none; }
+  .harrow { width: 34px; flex: none; display: grid; place-items: center; color: var(--dim); font-size: 24px; }
+  .hlegend { display: flex; gap: 30px; margin-top: 22px; font-size: 15.5px; color: var(--muted); flex-wrap: wrap; }
+  .hlegend span { display: inline-flex; align-items: center; gap: 8px; }
+  .hlegend b { color: var(--text); font-weight: 600; margin-right: 4px; }
+  .hlegend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+  .hlegend i.det { background: #4aa9c9; } .hlegend i.llm { background: var(--accent); } .hlegend i.typed { background: var(--violet); }
+  .hrefs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 34px; }
+  .hrefs .theme { padding: 18px 22px; }
+  .hrefs .ref-head { font-size: 17px; color: var(--muted); margin-bottom: 8px; }
+  .hrefs .ref-head b { color: var(--violet); font-weight: 600; }
+  .hrefs p { font-size: 15.5px; line-height: 1.45; color: var(--text); }
+  .hrefs .url { margin-top: auto; padding-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hrefs .url:hover { color: var(--accent); text-decoration: underline; }
+  .hflow { position: relative; margin-top: 56px; }
+  .hdivider { position: relative; width: 64px; flex: none; }
+  .hdivider::before { content: ""; position: absolute; left: 50%; top: -38px; bottom: -14px; border-left: 2px dashed var(--muted); }
+  .hdivider .z { position: absolute; top: -44px; font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  .hdivider .today { right: calc(50% + 12px); color: var(--accent); }
+  .hdivider .next { left: calc(50% + 12px); color: var(--violet); }
+  .hnode.future { border-style: dashed; background: transparent; }
+  .hnode.future.det { border-color: rgba(157,140,255,.55); }
+  .hnode.future.det .kind { background: var(--violet-soft); color: var(--violet); }
+
+  /* Screenshot placeholders */
+  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; margin-top: 24px; flex: 1; min-height: 0; }
+  .shots > div { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .shot { flex: 1; min-height: 0; border: 2px dashed var(--line); border-radius: 16px; background: rgba(255,255,255,0.015); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--dim); overflow: hidden; }
+  .shot svg { width: 44px; height: 44px; }
+  .shot .lbl { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+  .shot.filled { border-style: solid; border-color: var(--line); padding: 0; }
+  .shot.filled img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--stage); }
+  .shot-cap { flex: none; margin-top: 10px; font-size: 15.5px; color: var(--muted); text-align: center; }
+
+  /* Pricing table */
+  .pricing { display: grid; grid-template-columns: 1fr 56px 1fr; align-items: stretch; gap: 20px; margin-top: 24px; }
+  .price-group { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px 28px 20px; }
+  .price-group h3 { font-size: 23px; font-weight: 650; letter-spacing: -0.01em; }
+  .price-group .sub { font-family: var(--mono); font-size: 13px; color: var(--dim); margin-top: 4px; margin-bottom: 16px; }
+  .price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .price-row:first-of-type { border-top: none; }
+  .price-row .model { font-size: 18px; color: var(--text); }
+  .price-row .price { font-family: var(--mono); font-size: 15px; color: var(--muted); white-space: nowrap; }
+  .price-row .price b { color: var(--accent); font-weight: 600; }
+  .price-row.gap { border: 1.5px dashed rgba(157,140,255,.55); border-radius: 10px; padding: 10px 14px; margin-bottom: 2px; background: transparent; justify-content: center; }
+  .price-row.gap .model { color: var(--violet); font-style: italic; }
+
+  /* Dashed connectors tying each pricing row to its rough counterpart */
+  .price-link { display: flex; flex-direction: column; }
+  .price-link .lhead { visibility: hidden; }
+  .price-link .lhead h3 { font-size: 23px; font-weight: 650; margin: 0; }
+  .price-link .lhead .sub { font-family: var(--mono); font-size: 13px; margin-top: 4px; margin-bottom: 16px; }
+  .price-link .ltier { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .price-link .ltier::before { content: ""; width: 100%; border-top: 2px dashed var(--line); }
+  .price-link .ltier.on::before { border-top-color: var(--violet); }
+
+  .hint { position: fixed; right: 18px; bottom: 14px; font-family: var(--mono); font-size: 12px; color: var(--dim); opacity: .6; }
+
+  /* Level 3 deck additions */
+  .roadmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; position: relative; }
+  .roadmap .rm { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 22px 24px; position: relative; }
+  .roadmap .rm.now { border-color: var(--violet); }
+  .roadmap .rm.demo { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--panel)); }
+  .roadmap .when { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .roadmap .rm.now .when { color: var(--violet); }
+  .roadmap .rm.demo .when { color: var(--accent); }
+  .roadmap h3 { font-size: 23px; margin: 10px 0 12px; }
+  .roadmap ul { list-style: none; padding: 0; margin: 0; }
+  .roadmap li { font-size: 16.5px; color: var(--muted); line-height: 1.4; padding-left: 14px; position: relative; margin-bottom: 8px; }
+  .roadmap li::before { content: "·"; position: absolute; left: 0; color: var(--text); }
+  .roadmap .lvl { margin-top: 14px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .roadmap .rm.demo .lvl { color: var(--accent); }
+  .cmp { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 24px; font-size: 17px; }
+  .cmp th { text-align: left; font-family: var(--mono); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 0 18px 10px; }
+  .cmp th.ag { color: var(--accent); }
+  .cmp td { padding: 11px 16px; border-top: 1px solid var(--line); color: var(--muted); }
+  .cmp td:first-child { color: var(--text); font-weight: 600; width: 23%; }
+  .cmp td.ag { color: var(--text); background: var(--accent-soft); }
+  .cmp tr:last-child td.ag { border-bottom-left-radius: 0; }
+  .two-points { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+  .two-points .pt h3 { font-size: 26px; margin-bottom: 8px; }
+  .two-points .pt h3 .n { font-family: var(--mono); font-size: 16px; color: var(--accent); margin-right: 10px; }
+  .two-points .pt p { font-size: 19px; color: var(--muted); line-height: 1.45; margin-bottom: 22px; }
+  .two-points .intersect { width: 100%; height: 190px; margin-top: 0; }
+  .two-points .intersect .set { width: 340px; height: 190px; font-size: 17px; }
+  .two-points .intersect .set.user { left: calc(50% - 280px); padding-left: 36px; }
+  .two-points .intersect .set.agent { left: calc(50% - 60px); padding-right: 36px; }
+  .two-points .intersect .set.both { left: calc(50% - 60px); width: 120px; font-size: 16px; }
+  .prmock { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 18px 22px; font-size: 17px; }
+  .prmock .t { font-weight: 650; font-size: 19px; color: var(--text); }
+  .prmock .by { color: var(--muted); margin-top: 6px; }
+  .prmock .by b { color: var(--violet); }
+  .prmock .app { font-family: var(--mono); font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; margin-left: 6px; color: var(--muted); }
+  .prmock .deny { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: rgba(255, 99, 99, .10); border: 1px solid rgba(255, 99, 99, .45); color: #ff9b9b; font-family: var(--mono); font-size: 14px; }
+  .card.new { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--panel)); }
+  .card .who { font-family: var(--mono, monospace); font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .card.new .who { color: var(--accent); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 16px; }
+  .stats .stat { border-left: 3px solid var(--violet); padding: 4px 0 4px 18px; }
+  .stats .stat b { display: block; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+  .stats .stat span { font-size: 17px; color: var(--muted); line-height: 1.4; }
+  .stats .src { grid-column: 1 / -1; font-size: 14px; color: var(--muted); opacity: .8; }
+  .card .why { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 10px; color: var(--text); }
+  .card .answer { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 18px; line-height: 1.45; color: var(--text); }
+  .card .answer b { color: var(--accent); font-weight: 650; }
+  .cards.c2 { grid-template-columns: repeat(2, 1fr); }
+  .badge { font-family: var(--mono); font-size: 14px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .badge.demo { background: var(--accent-soft); border-color: rgba(90,200,184,.5); color: var(--accent); }
+  .badge.ok { background: var(--healthy-soft); border-color: rgba(63,185,80,.5); color: var(--healthy); }
+  .badge.no { background: var(--bad-soft); border-color: rgba(248,81,73,.5); color: var(--bad); }
+  .agenda { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
+  .agenda .item { display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 28px; }
+  .agenda .n { font-family: var(--mono); font-size: 22px; color: var(--accent); }
+  .agenda h3 { font-size: 26px; font-weight: 650; letter-spacing: -0.01em; }
+  .agenda p { font-size: 18px; color: var(--muted); margin-top: 4px; }
+  .demo-steps { display: flex; flex-direction: column; gap: 12px; margin-top: 30px; }
+  .ds { display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 24px; }
+  .ds .n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-family: var(--mono); font-size: 16px; }
+  .ds b { font-size: 22px; font-weight: 650; }
+  .ds p { font-size: 18px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .mx { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 26px; }
+  .mx td { background: var(--panel); padding: 13px 22px; font-size: 19px; color: var(--muted); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .mx td:first-child { border-left: 1px solid var(--line); border-radius: 12px 0 0 12px; color: var(--text); white-space: nowrap; }
+  .mx td:last-child { border-right: 1px solid var(--line); border-radius: 0 12px 12px 0; }
+  .mx tr.demo td { border-color: rgba(90,200,184,.45); }
+  .mx tr.demo td:first-child b { color: var(--accent); }
+  .mx tr.hd td { background: transparent; border: none; font-family: var(--mono); font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 0 22px; }
+  .intersect { position: relative; height: 210px; margin-top: 40px; display: flex; justify-content: center; }
+  .intersect .set { position: absolute; top: 0; width: 520px; height: 210px; border-radius: 50%; display: flex; align-items: center; font-size: 21px; color: var(--text); }
+  .intersect .set.user { left: calc(50% - 390px); border: 2px solid var(--violet); background: var(--violet-soft); padding-left: 60px; }
+  .intersect .set.agent { left: calc(50% - 130px); border: 2px solid var(--accent); background: var(--accent-soft); justify-content: flex-end; padding-right: 60px; }
+  .intersect .set.both { left: calc(50% - 130px); width: 260px; border-radius: 0; justify-content: center; text-align: center; font-weight: 700; color: var(--text); background: transparent; z-index: 2; pointer-events: none; }
+  .intersect.step-el { transform: translateY(12px); }
+  .intersect.step-el.shown { transform: none; }
+</style>
+</head>
+<body>
+<div class="viewport">
+  <div class="stage" id="stage">
+    <div class="grid-bg"></div>
+
+    <!-- 3. Recap: levels (same slide as the first deck) -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">What's next</div>
+      <h2 style="font-size:52px">From IDP to <span class="accent">AEP</span></h2>
+      <p class="lede" style="margin-top:12px;font-size:24px">Internal Developer Platform → Agentic Engineering Platform: one platform where engineers and agents build software together.</p>
+      <blockquote class="quote step-el" data-step="1">
+        <p>“A deterministic foundation is what makes agents trustworthy enough to do more.”</p>
+        <cite>Kaspar von Grünberg · founder of Humanitec, CEO of Weave Intelligence · <span class="mono">weaveintelligence.io/blog/from-idp-to-aep</span></cite>
+      </blockquote>
+      <div class="ladder">
+        <div class="rung step-el" data-step="2" style="--d:0s">
+          <div class="lvl">Level 1</div>
+          <h3>Human in the loop</h3>
+          <p>Agent suggests, a human approves every step.</p>
+        </div>
+        <div class="rung now step-el" data-step="2" style="--d:.15s">
+          <div class="lvl">Level 2</div>
+          <h3>Human on the loop</h3>
+          <p>Agents work in parallel; humans review the results.</p>
+          <span class="tag">Today's demo</span>
+        </div>
+        <div class="rung next step-el" data-step="2" style="--d:.3s">
+          <div class="lvl">Level 3</div>
+          <h3>Human as orchestrator</h3>
+          <p>Agents run in the background; humans set direction.</p>
+          <span class="tag">Night shift</span>
+        </div>
+        <div class="rung step-el" data-step="2" style="--d:.45s">
+          <div class="lvl">Level 4</div>
+          <h3>Fully autonomous</h3>
+          <p>Systems adjust themselves within guardrails.</p>
+        </div>
+      </div>
+      <p class="note step-el" data-step="2" style="--d:.6s"><b>Lava is the deterministic foundation:</b> paths, policy and identity already exist for apps. Agents inherit them.</p>
+    </section>
+
+    <!-- 4. Demo 1 framing -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Demo 1 · Level 3</div>
+      <h2 style="font-size:52px">Sprint refinement prep, on a schedule</h2>
+      <p class="lede" style="margin-top:12px;font-size:24px">Before every refinement meeting, an agent reviews the current and next sprint against our Definition of Ready and leaves the notes on a Confluence page. Nobody starts it.</p>
+      <div class="hflow">
+        <div class="hnode det auto-in" style="--d:.05s"><span class="kind">kagent</span><h3>Schedule fires</h3><p>Cron or "Run now". Every run is recorded with its history.</p></div>
+        <div class="harrow">→</div>
+        <div class="hnode llm auto-in" style="--d:.15s"><span class="kind">agent + skill</span><h3>Loads the skill</h3><p><span class="mono">sprint-refining-meeting</span> from platform-agents, pinned to one version.</p></div>
+        <div class="harrow">→</div>
+        <div class="hnode det auto-in" style="--d:.25s"><span class="kind">guard</span><h3>Reads Jira</h3><p>Board, sprints, tickets. Read-only, enforced outside the agent.</p></div>
+        <div class="harrow">→</div>
+        <div class="hnode det auto-in" style="--d:.35s"><span class="kind">guard</span><h3>Writes one page</h3><p>The refinement notes page, and nothing else in Confluence.</p></div>
+        <div class="harrow">→</div>
+        <div class="hnode typed auto-in" style="--d:.45s"><span class="kind">humans</span><h3>Review in the meeting</h3><p>The team works through the findings and fills in the Notes column.</p></div>
+      </div>
+      <div class="cards c3" style="margin-top:34px">
+        <div class="card step-el" data-step="1"><h3>Runs without us</h3><p>A kagent Scheduled Run starts a fresh session each time. Runs, results and history are kept even after the chat is deleted.</p></div>
+        <div class="card step-el" data-step="1" style="--d:.1s"><h3>Skill as an artifact</h3><p>The agent is pinned to an exact skill version (image digest). A new skill version can be tested and compared before any agent uses it.</p></div>
+        <div class="card step-el" data-step="1" style="--d:.2s"><h3>Guardrails outside the prompt</h3><p>A small proxy holds the Atlassian credential and only allows Jira reads and updates to one page. Everything else is refused and logged.</p></div>
+      </div>
+    </section>
+
+    <!-- 5. Guardrails for unsupervised agents -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Demo 2 · Guardrails</div>
+      <h2 style="font-size:52px">What has to be true before agents work unsupervised</h2>
+      <p class="lede" style="margin-top:12px;font-size:24px">We enforce these outside the agent, so no prompt can talk its way past them.</p>
+      <table class="mx">
+        <tr class="demo auto-in" style="--d:.05s"><td><b>Contained</b></td><td>Every conversation runs in its own locked room. A misbehaving agent can't touch anything else.</td><td><span class="badge demo">demo</span></td></tr>
+        <tr class="demo auto-in" style="--d:.1s"><td><b>Only where we allow</b></td><td>No network by default. We open destinations one at a time, live, without changing the agent.</td><td><span class="badge demo">demo</span></td></tr>
+        <tr class="demo auto-in" style="--d:.15s"><td><b>Never holds secrets</b></td><td>The agent can use a credential but can't see it, so it can't leak it, even if it's tricked.</td><td><span class="badge demo">demo</span></td></tr>
+        <tr class="auto-in" style="--d:.2s"><td><b>Acts as the person</b></td><td>Work done for someone is done under their identity, so normal permissions and approvals still apply.</td><td><span class="badge demo">demo 3</span></td></tr>
+        <tr class="auto-in" style="--d:.25s"><td><b>Cheap when idle</b></td><td>Idle agents sleep and cost nothing, then pick up where they left off in under a second.</td><td></td></tr>
+      </table>
+      <p class="note step-el" data-step="1">Built on open source: kagent and Agent Substrate, a CNCF project started at Google and co-maintained with Solo.io.</p>
+    </section>
+
+    <!-- 6. Why agent identity is new -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Demo 3 · Identity</div>
+      <h2 style="font-size:52px">Agents are a new kind of identity</h2>
+      <p class="lede" style="margin-top:12px;font-size:24px">Agents behave like people but are run like software. Our identity tools assume one or the other.</p>
+      <table class="cmp auto-in" style="--d:.1s">
+        <tr><th>What identity assumes</th><th>People</th><th>Service accounts</th><th class="ag">AI agents</th></tr>
+        <tr><td>Someone is accountable</td><td>The person</td><td>The owning team</td><td class="ag">No one, unless we name an owner</td></tr>
+        <tr><td>One identity, human speed</td><td>One login, a few actions a minute</td><td>A few, on a fixed schedule</td><td class="ag">Thousands, at machine speed</td></tr>
+        <tr><td>Someone manages its lifecycle</td><td>HR: joiners, movers, leavers</td><td>A team creates and reviews it</td><td class="ag">Anyone can create one in minutes</td></tr>
+        <tr><td>Manipulation is rare</td><td>Phishing works sometimes</td><td>Runs only its own code</td><td class="ag">Anything it reads can instruct it</td></tr>
+        <tr><td>Acting for others is rare</td><td>An assistant, power of attorney</td><td>Never, it acts as itself</td><td class="ag">The normal case, many people an hour</td></tr>
+        <tr><td>Approvals mean a person decided</td><td>"Approved by Alice": Alice decided</td><td>It can't approve anything</td><td class="ag">Hollow if it can approve for Alice</td></tr>
+      </table>
+      <p class="lede step-el" data-step="1" style="margin-top:20px;font-size:21px">So today an agent gets either someone's full access or a shared bot account. Either way we lose <b>who asked</b> and <b>what they were allowed to do</b>.</p>
+      <div class="stats step-el" data-step="2">
+        <div class="stat"><b>80%</b><span>of companies say their agents took actions nobody intended</span></div>
+        <div class="stat"><b>23%</b><span>have seen an agent tricked into revealing credentials</span></div>
+        <div class="stat"><b>82 : 1</b><span>machine identities for every person, and AI is expected to add the most new ones</span></div>
+        <div class="src">SailPoint, AI agents: the new attack surface (2025) · CyberArk, Identity Security Landscape (2025)</div>
+      </div>
+    </section>
+
+    <!-- 7. Demo 3 framing -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">Demo 3 · Identity</div>
+      <h2 style="font-size:52px">The agent acts for you, never beyond you</h2>
+      <p class="lede" style="margin-top:12px;font-size:24px">An agent can have its own identity for work it does on its own. When it works for you, it uses your access, and what it does carries your name.</p>
+      <div class="two-points">
+        <div class="pt auto-in" style="--d:.05s">
+          <h3><span class="n">01</span>Only what you're allowed to do</h3>
+          <p>Your permissions, limited to the tools we allow the agent. Asking it, or tricking it, never gets it more access than you have.</p>
+          <div class="intersect">
+            <div class="set user"><span>What <b>you</b><br>may do</span></div>
+            <div class="set both"><span>What it<br>does</span></div>
+            <div class="set agent"><span>What the<br><b>agent</b> may do</span></div>
+          </div>
+        </div>
+        <div class="pt step-el" data-step="1">
+          <h3><span class="n">02</span>Your name on the work</h3>
+          <p>A PR it opens for you is authored by you, so you can't approve your own change. Review and compliance rules still hold.</p>
+          <div class="prmock">
+            <div class="t">Update README  #12</div>
+            <div class="by">opened by <b>userX</b><span class="app">with gh-agent</span></div>
+            <div class="deny">✕ Can not approve your own pull request</div>
+          </div>
+        </div>
+      </div>
+      <p class="note step-el" data-step="2" style="text-align:center;margin-top:30px">"Agents need explicit, limited authority, not full user credentials." <span style="opacity:.7">· Palo Alto Networks</span></p>
+    </section>
+
+    <!-- 7. What's next: plan for Lava -->
+    <section class="slide" style="padding-top:70px">
+      <div class="eyebrow">What's next</div>
+      <h2 style="font-size:52px">What we do next in Lava</h2>
+      <p class="lede" style="margin-top:12px;font-size:23px">Deploying agents is the easy part. What no platform decides for us is identity: who an agent is, who it acts for, and what it may do.</p>
+      <div class="cards c2" style="margin-top:30px">
+        <div class="card auto-in" style="--d:.05s"><h3><span class="n" style="font-family:var(--mono);font-size:16px;color:var(--accent);margin-right:10px">01</span>Start with quick wins</h3><p>Simple agents that need no complex setup, like Jira hygiene and refinement prep. Each gets an owner and a measure, such as hours saved per sprint.</p></div>
+        <div class="card auto-in" style="--d:.15s"><h3><span class="n" style="font-family:var(--mono);font-size:16px;color:var(--accent);margin-right:10px">02</span>Treat skills like code</h3><p>Versioned and reviewed by PR, then tested and benchmarked against real examples before any agent uses a new version.</p></div>
+        <div class="card auto-in" style="--d:.25s"><h3><span class="n" style="font-family:var(--mono);font-size:16px;color:var(--accent);margin-right:10px">03</span>Agent identity, designed with Security</h3><p>Okta integration, every agent registered with an owner, and clear rules for when it acts as a person or as itself.</p></div>
+        <div class="card auto-in" style="--d:.35s"><h3><span class="n" style="font-family:var(--mono);font-size:16px;color:var(--accent);margin-right:10px">04</span>The platform in a real Lava cluster</h3><p>Sandboxing, the gateway, audit in our existing logging, and cost limits on Foundry, proven in our environment.</p></div>
+      </div>
+    </section>
+
+    <!-- 9. Close -->
+    <section class="slide title-slide">
+      <div class="eyebrow">Summary</div>
+      <h1 style="font-size:76px">Agents can work while we don't,<br><span class="hl">because the platform holds the line</span></h1>
+      <p class="lede">Schedules start them. Guardrails contain them. Identity limits them to the person they work for.</p>
+    </section>
+
+    <div class="footer"><span>Agents on Lava · Level 3</span><span id="counter"></span></div>
+    <div class="progress" id="progress"></div>
+  </div>
+</div>
+<div class="hint">← → navigate · F fullscreen</div>
+
+<script>
+  const stage = document.getElementById('stage');
+  const slides = [...document.querySelectorAll('.slide')];
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  let current = 0;
+
+  function fit() {
+    const s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    stage.style.transform = `scale(${s})`;
+    stage.style.borderRadius = s >= 0.98 && window.innerWidth / window.innerHeight > 1.7 ? '0' : '18px';
+  }
+
+  let step = 1;
+  const maxStep = slide => Math.max(1, ...[...slide.querySelectorAll('[data-step]')].map(el => +el.dataset.step));
+
+  document.querySelectorAll('path.draw').forEach(p => {
+    const len = Math.ceil(p.getTotalLength());
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+  });
+
+  function render() {
+    const slide = slides[current];
+    slide.querySelectorAll('[data-step]').forEach(el => {
+      const n = +el.dataset.step;
+      const on = el.hasAttribute('data-only') ? n === step : n <= step;
+      el.classList.toggle('shown', on);
+      if (el.classList.contains('draw')) el.style.strokeDashoffset = on ? 0 : el.style.strokeDasharray;
+    });
+    const dots = slide.querySelector('.step-dots');
+    if (dots) dots.innerHTML = Array.from({length: maxStep(slide)}, (_, i) => `<b class="${i < step ? 'on' : ''}"></b>`).join('');
+    history.replaceState(null, '', `#${current + 1}${step > 1 ? '.' + step : ''}`);
+  }
+
+  function go(i, toStep = 1) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    step = toStep === 'last' ? maxStep(slides[current]) : Math.min(toStep, maxStep(slides[current]));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    render();
+  }
+
+  function next() {
+    if (step < maxStep(slides[current])) { step++; render(); }
+    else if (current < slides.length - 1) go(current + 1);
+  }
+
+  function prev() {
+    if (step > 1) { step--; render(); }
+    else if (current > 0) go(current - 1, 'last');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1, 'last');
+    else if (e.key.toLowerCase() === 'f') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  document.addEventListener('click', e => {
+    if (e.target.closest('a, button')) return;
+    e.clientX > window.innerWidth / 3 ? next() : prev();
+  });
+
+  window.addEventListener('resize', fit);
+  fit();
+  const [hs, hstep] = location.hash.slice(1).split('.').map(n => parseInt(n, 10));
+  go((hs || 1) - 1, hstep || 1);
+</script>
+</body>
+</html>
