@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: scripts/ask-agent.sh <agent-name> "<message>"
+# Usage: pocs/promotion-analysis/scripts/ask-agent.sh <agent-name> "<message>"
 # Requires: kubectl port-forward -n kagent svc/kagent-controller 8083:8083
 set -euo pipefail
 

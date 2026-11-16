@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: scripts/release.sh <version> [healthy|slow|errors]
+# Usage: pocs/promotion-analysis/scripts/release.sh <version> [healthy|slow|errors]
 #   healthy  normal release (default)
 #   slow     adds 20-40ms latency per request: Argo passes, the agents flag it AT RISK
 #   errors   returns random 5xx: the agents flag it DEGRADED

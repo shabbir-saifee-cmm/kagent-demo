@@ -104,16 +104,6 @@
       ]
     },
     {
-      "clientId": "oncall-agent",
-      "name": "oncall agent identity",
-      "enabled": true,
-      "publicClient": false,
-      "secret": "oncall-agent-local-secret",
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
-    },
-    {
       "clientId": "mcp-gateway",
       "name": "MCP gateway (token exchange)",
       "enabled": true,
