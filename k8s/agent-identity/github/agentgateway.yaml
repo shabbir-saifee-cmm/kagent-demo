@@ -1,0 +1,120 @@
+# agentgateway in front of github-mcp-server. Per request it:
+#   1. verifies the caller's Keycloak access token (forwarded by kagent tokenPassthrough),
+#   2. applies per-tool rules on the token's claims,
+#   3. exchanges the token at Keycloak (extAuthz call to the token endpoint) for the GitHub token stored when the user linked
+#      GitHub through the gh-agent App (requested_issuer=github), and
+#   4. calls github-mcp-server with that token, so GitHub sees the user, not the agent.
+# The mcp-gateway client secret is the local-only value from realm-lava.json.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentgateway
+  namespace: kagent
+data:
+  config.yaml: |
+    config: {}
+    binds:
+    - port: 3000
+      listeners:
+      - name: mcp
+        protocol: HTTP
+        routes:
+        - name: github
+          matches:
+          - path:
+              pathPrefix: /mcp/github
+          policies:
+            jwtAuth:
+              mode: strict
+              preserveToken: true
+              issuer: http://keycloak.localtest.me/realms/lava
+              audiences: [kagent]
+              jwks:
+                url: http://keycloak.localtest.me/realms/lava/protocol/openid-connect/certs
+            mcpAuthorization:
+              rules:
+              # Signed-in engineers may use every GitHub tool except the ones agents
+              # should never do on anyone's behalf.
+              - 'jwt.groups.exists(g, g in ["sre-admin", "sre-checkout"]) && !(mcp.tool.name in ["merge_pull_request", "delete_file", "create_repository", "fork_repository"])'
+            # Token exchange built by hand (agentgateway's extAuthz pattern) rather than
+            # backendAuth.oauthTokenExchange: Keycloak's external-token exchange response
+            # omits token_type, which the built-in policy requires.
+            extAuthz:
+              host: keycloak.localtest.me:80
+              cache:
+                key:
+                - request.headers["authorization"]
+                ttl: "300"
+                maxEntries: 1024
+              protocol:
+                http:
+                  path: '"/realms/lava/protocol/openid-connect/token"'
+                  addRequestHeaders:
+                    content-type: '"application/x-www-form-urlencoded"'
+                    authorization: '"Basic " + base64.encode("mcp-gateway:mcp-gateway-local-secret")'
+                    :method: '"POST"'
+                  body: |
+                    form.encode({
+                      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                      "subject_token": request.headers["authorization"].split(" ")[1],
+                      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                      "requested_issuer": "github"
+                    })
+                  metadata:
+                    token: json(response.body).access_token
+            transformations:
+              request:
+                set:
+                  authorization: '"Bearer " + extauthz.token'
+          backends:
+          - mcp:
+              targets:
+              - name: github
+                mcp:
+                  host: http://github-mcp-server.kagent.svc.cluster.local:8082/
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentgateway
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: agentgateway}
+  template:
+    metadata:
+      labels: {app: agentgateway}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agentgateway
+          image: cr.agentgateway.dev/agentgateway:v1.7.0
+          args: ["-f", "/etc/agentgateway/config.yaml"]
+          ports:
+            - {name: mcp, containerPort: 3000}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/agentgateway}
+      volumes:
+        - name: config
+          configMap: {name: agentgateway}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway
+  namespace: kagent
+spec:
+  selector: {app: agentgateway}
+  ports:
+    - {name: mcp, port: 3000, targetPort: mcp}

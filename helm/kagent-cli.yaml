@@ -1,0 +1,5 @@
+install:
+  defaultModelProvider: Ollama
+  kagent:
+    valuesFiles:
+      - kagent-values.yaml

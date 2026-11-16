@@ -1,0 +1,149 @@
+{
+  "realm": "lava",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 1800,
+  "groups": [
+    {
+      "name": "sre-checkout"
+    },
+    {
+      "name": "sre-admin"
+    }
+  ],
+  "users": [
+    {
+      "username": "shabbir-saifee-cmm",
+      "email": "shabbir-saifee-cmm@lava.local",
+      "firstName": "Shabbir",
+      "lastName": "CMM",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "cmm",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/sre-admin"
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "manage-account-links",
+          "view-profile"
+        ]
+      }
+    },
+    {
+      "username": "shabbir-saifee-personal",
+      "email": "shabbir-saifee-personal@lava.local",
+      "firstName": "Shabbir",
+      "lastName": "Personal",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "personal",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/sre-checkout"
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "manage-account-links",
+          "view-profile"
+        ]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "kagent",
+      "name": "kagent UI",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "kagent-local-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://kagent.localtest.me/oauth2/callback"
+      ],
+      "webOrigins": [
+        "http://kagent.localtest.me"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-kagent",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "kagent",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "oncall-agent",
+      "name": "oncall agent identity",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "oncall-agent-local-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "mcp-gateway",
+      "name": "MCP gateway (token exchange)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "mcp-gateway-local-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "github",
+      "displayName": "GitHub (gh-agent)",
+      "providerId": "github",
+      "enabled": true,
+      "storeToken": true,
+      "addReadTokenRoleOnCreate": true,
+      "linkOnly": true,
+      "trustEmail": false,
+      "config": {
+        "clientId": "Iv23liOJ79t167HRmbGd",
+        "clientSecret": "${GH_AGENT_CLIENT_SECRET}",
+        "syncMode": "IMPORT"
+      }
+    }
+  ],
+  "ssoSessionIdleTimeout": 43200,
+  "ssoSessionMaxLifespan": 86400,
+  "clientSessionIdleTimeout": 43200,
+  "clientSessionMaxLifespan": 86400
+}

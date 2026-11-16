@@ -1,0 +1,52 @@
+# GitHub's official MCP server in HTTP mode. It holds no credentials: every request
+# carries the caller's GitHub token, attached by agentgateway after token exchange.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: github-mcp-server}
+  template:
+    metadata:
+      labels: {app: github-mcp-server}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: server
+          image: ghcr.io/github/github-mcp-server:v2.1.0
+          args: ["http", "--port", "8082"]
+          env:
+            - {name: GITHUB_TOOLSETS, value: "context,repos,pull_requests,issues"}
+            # Create/edit tools otherwise defer to an MCP App form, which the kagent chat can't submit.
+            - {name: GITHUB_FEATURES, value: mcp_apps_disable_form_deferral}
+            - {name: SSL_CERT_FILE, value: /etc/egress-ca/ca-bundle.pem}
+          ports:
+            - {name: http, containerPort: 8082}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - {name: egress-ca, mountPath: /etc/egress-ca, readOnly: true}
+      volumes:
+        - name: egress-ca
+          configMap: {name: egress-ca-bundle}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+spec:
+  selector: {app: github-mcp-server}
+  ports:
+    - {name: http, port: 8082, targetPort: http}

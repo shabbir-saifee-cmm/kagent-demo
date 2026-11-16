@@ -1,0 +1,81 @@
+# Local Keycloak (dev mode, HTTP) for the agent-identity POC.
+# The realm ConfigMap is created from realm-lava.json:
+#   kubectl -n identity create configmap keycloak-realm --from-file=realm-lava.json
+#   kubectl -n identity create secret generic gh-agent-oauth --from-file=client-secret=.secrets/gh-agent-client-secret.txt
+#   kubectl -n identity create configmap egress-ca-bundle --from-file=ca-bundle.pem=.secrets/ca-bundle.pem
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: identity
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: identity
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: keycloak}
+  template:
+    metadata:
+      labels: {app: keycloak}
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.2
+          args: ["start-dev", "--import-realm", "--features=token-exchange,admin-fine-grained-authz:v1"]
+          env:
+            - {name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin}
+            - {name: KC_BOOTSTRAP_ADMIN_PASSWORD, value: admin}
+            - {name: KC_HOSTNAME, value: "http://keycloak.localtest.me"}
+            - {name: KC_HTTP_ENABLED, value: "true"}
+            - {name: KC_HEALTH_ENABLED, value: "true"}
+            - {name: KC_PROXY_HEADERS, value: xforwarded}
+            - {name: KC_TRUSTSTORE_PATHS, value: /etc/egress-ca/ca-bundle.pem}
+            - name: GH_AGENT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: gh-agent-oauth, key: client-secret}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: management, containerPort: 9000}
+          readinessProbe:
+            httpGet: {path: /health/ready, port: management}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 1Gi}
+          volumeMounts:
+            - {name: realm, mountPath: /opt/keycloak/data/import}
+            - {name: egress-ca, mountPath: /etc/egress-ca, readOnly: true}
+      volumes:
+        - name: realm
+          configMap: {name: keycloak-realm}
+        - name: egress-ca
+          configMap: {name: egress-ca-bundle}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: identity
+spec:
+  selector: {app: keycloak}
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: identity
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: keycloak.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: keycloak, port: {number: 80}}

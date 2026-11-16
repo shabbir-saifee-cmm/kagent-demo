@@ -1,0 +1,8 @@
+atelet:
+  extraEnv:
+    - name: SSL_CERT_FILE
+      value: /var/lib/ate/ca-certificates.crt
+objectStorePlugin:
+  extraEnv:
+    - name: SSL_CERT_FILE
+      value: /var/lib/ate/ca-certificates.crt

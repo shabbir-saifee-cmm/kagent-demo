@@ -57,7 +57,7 @@ agent trace to its logs. Every agent sends OpenTelemetry traces to Jaeger.
 ## 1. Store the Foundry key
 
 ```bash
-printf '%s' '<key>' > .foundry-key     # gitignored
+printf '%s' '<key>' > .secrets/foundry-key     # .secrets/ is gitignored
 ```
 
 ## 2. Install Jaeger
@@ -73,7 +73,7 @@ kubectl -n observability rollout status deploy/jaeger
 
 ```bash
 kubectl create ns kagent
-kubectl -n kagent create secret generic kagent-foundry --from-file=FOUNDRY_API_KEY=.foundry-key
+kubectl -n kagent create secret generic kagent-foundry --from-file=FOUNDRY_API_KEY=.secrets/foundry-key
 
 helm install kagent-crds oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds -n kagent --version 0.10.3
 helm install kagent oci://ghcr.io/kagent-dev/kagent/helm/kagent -n kagent --version 0.10.3 -f helm/kagent-values.yaml
@@ -94,19 +94,19 @@ helm install prometheus prometheus-community/prometheus -n monitoring --create-n
 Create the sub-agents before `promotion-manager`, which references them:
 
 ```bash
-cd k8s/agents
-kubectl apply -f modelconfigs.yaml -f rbac.yaml \
-  -f diagnostic-agent.yaml -f metrics-agent.yaml -f analysis-agent.yaml -f remediation-agent.yaml
+kubectl apply -f k8s/shared/modelconfigs.yaml -f k8s/shared/harness.yaml
+cd k8s/promotion-analysis/agents
+kubectl apply -f diagnostic-agent.yaml -f metrics-agent.yaml -f analysis-agent.yaml -f remediation-agent.yaml
 kubectl apply -f promotion-manager.yaml
-cd ../..
+cd ../../..
 kubectl get agents -n kagent            # all five should be READY=True
 
-kubectl apply -k report-service
+kubectl apply -k k8s/promotion-analysis/report-service
 kubectl -n kagent rollout status deploy/report-service
 ```
 
 If `promotion-manager` still reports `remediation-agent not found`, recreate it:
-`kubectl delete -f k8s/agents/promotion-manager.yaml && kubectl apply -f k8s/agents/promotion-manager.yaml`.
+`kubectl delete -f k8s/promotion-analysis/agents/promotion-manager.yaml && kubectl apply -f k8s/promotion-analysis/agents/promotion-manager.yaml`.
 
 Optional smoke test:
 
@@ -118,8 +118,8 @@ scripts/ask-agent.sh analysis-agent "Reply with just the word OK."
 ## 6. Deploy the demo app
 
 ```bash
-kubectl apply -f k8s/demo/namespace.yaml
-kubectl apply -f k8s/demo/
+kubectl apply -f k8s/promotion-analysis/demo-app/namespace.yaml
+kubectl apply -f k8s/promotion-analysis/demo-app/
 ```
 
 `demo-app` (a podinfo container) starts as `release-1`, the initial deploy, so

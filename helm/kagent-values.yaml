@@ -1,48 +1,28 @@
-providers:
-  default: foundry
-  foundry:
-    provider: Foundry
-    model: DeepSeek-V4.1-Flash
-    apiKeySecretRef: kagent-foundry
-    apiKeySecretKey: FOUNDRY_API_KEY
-    config:
-      endpoint: https://ai-foundry-poc-eph-unstable.services.ai.azure.com
-      deployment: DeepSeek-V4.1-Flash
-      apiVersion: "2024-10-21"
-
 kagent-tools:
   rbac:
     readOnly: true
+    additionalRules:
+      - apiGroups: ["argoproj.io"]
+        resources: ["rollouts", "analysisruns", "analysistemplates", "experiments"]
+        verbs: ["get", "list", "watch"]
+  otel:
+    tracing:
+      enabled: true
+      exporter:
+        otlp:
+          endpoint: http://jaeger.observability.svc.cluster.local:4317
+          insecure: true
 
-grafana-mcp:
-  enabled: false
-
-k8s-agent:
-  enabled: false
-kgateway-agent:
-  enabled: false
-istio-agent:
-  enabled: false
-promql-agent:
-  enabled: false
-observability-agent:
-  enabled: false
-argo-rollouts-agent:
-  enabled: false
-helm-agent:
-  enabled: false
-cilium-policy-agent:
-  enabled: false
-cilium-manager-agent:
-  enabled: false
-cilium-debug-agent:
-  enabled: false
-
-otel:
-  tracing:
-    enabled: true
-    exporter:
-      otlp:
+config:
+  telemetry:
+    traces:
+      endpoint: http://jaeger.observability.svc.cluster.local:4317
+      protocol: grpc
+  runtimeDefaults:
+    cpu: "1"
+    memory: 512Mi
+    telemetry:
+      traces:
         endpoint: http://jaeger.observability.svc.cluster.local:4317
         protocol: grpc
-        insecure: true
+      captureContent: true

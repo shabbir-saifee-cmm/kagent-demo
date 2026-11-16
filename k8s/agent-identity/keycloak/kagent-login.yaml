@@ -1,0 +1,103 @@
+# Keycloak login in front of the kagent UI. Replaces the kagent chart's bundled
+# oauth2-proxy so it can run with alpha config and forward the user's *access token*
+# as Authorization: Keycloak token exchange (used by agentgateway to fetch the user's
+# GitHub token) only accepts access tokens, and the chart's proxy forwards the ID token.
+# Reuses the kagent-oidc Secret (client-id, client-secret, cookie-secret).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kagent-login
+  namespace: kagent
+data:
+  alpha.yaml: |
+    server:
+      BindAddress: "0.0.0.0:4180"
+    upstreamConfig:
+      upstreams:
+        - {id: kagent-ui, path: /, uri: "http://kagent-ui:8080"}
+    injectRequestHeaders:
+      - name: Authorization
+        values:
+          - claimSource: {claim: access_token, prefix: "Bearer "}
+      - name: X-Forwarded-User
+        values:
+          - claimSource: {claim: user}
+      - name: X-Forwarded-Email
+        values:
+          - claimSource: {claim: email}
+    providers:
+      - id: keycloak
+        provider: oidc
+        clientID: kagent
+        clientSecretFile: /etc/kagent-oidc/client-secret
+        scope: "openid profile email"
+        code_challenge_method: S256
+        oidcConfig:
+          issuerURL: "http://keycloak.localtest.me/realms/lava"
+          emailClaim: email
+          userIDClaim: sub
+          audienceClaims: [aud]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kagent-login
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: kagent-login}
+  template:
+    metadata:
+      labels: {app: kagent-login}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+          args:
+            - --alpha-config=/etc/oauth2-proxy/alpha.yaml
+            - --redirect-url=http://kagent.localtest.me/oauth2/callback
+            - --email-domain=*
+            - --cookie-secure=false
+            - --cookie-samesite=lax
+            - --cookie-refresh=25m
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+            - --skip-jwt-bearer-tokens=true
+            - --skip-auth-route=^/health$
+          env:
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef: {name: kagent-oidc, key: cookie-secret}
+          ports:
+            - {name: http, containerPort: 4180}
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/oauth2-proxy}
+            - {name: oidc, mountPath: /etc/kagent-oidc, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: kagent-login}
+        - name: oidc
+          secret: {secretName: kagent-oidc}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent-login
+  namespace: kagent
+spec:
+  selector: {app: kagent-login}
+  ports:
+    - {name: http, port: 4180, targetPort: http}

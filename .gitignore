@@ -3,3 +3,6 @@ dist/
 *.tar
 .foundry-key
 __pycache__/
+
+# Local-only secrets for the demos (tokens, client secrets, CA bundles). Never commit.
+.secrets/

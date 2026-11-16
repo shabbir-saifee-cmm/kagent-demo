@@ -1,0 +1,18 @@
+# Demo 2: sandbox-agent may reach the GitHub API and nothing else. Substrate's egress
+# gateway replaces the Authorization header on the way out with the agent's own GitHub
+# token (Secret github-agent-token, built by ready.sh from .secrets/github-agent-token.txt),
+# so the token never enters the sandbox.
+apiVersion: api.kagent.dev/v1alpha3
+kind: EgressPolicy
+metadata:
+  name: github
+  namespace: kagent
+spec:
+  destinations:
+    - origin: https://api.github.com
+      authentication:
+        header: Authorization
+        prefix: "Bearer "
+        secretKeyRef:
+          name: github-agent-token
+          key: token

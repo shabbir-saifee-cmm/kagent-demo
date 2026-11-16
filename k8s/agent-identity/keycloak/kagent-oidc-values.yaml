@@ -1,0 +1,43 @@
+# Overlay for the kagent chart: Keycloak login in front of the UI, and the controller
+# trusts the proxy's bearer token so each session knows its user. Apply with
+# helm upgrade --reuse-values -f this file. The kagent-oidc Secret (client-id,
+# client-secret, cookie-secret) is created out of band.
+config:
+  server:
+    auth:
+      mode: trusted-proxy
+      userIdClaim: preferred_username
+
+oauth2-proxy:
+  # Disabled: kagent-login.yaml runs oauth2-proxy with alpha config instead.
+  enabled: false
+  config:
+    existingSecret: kagent-oidc
+  extraEnv:
+    - name: KAGENT_OAUTH2_PROXY_SIGNIN_TEMPLATE_CHECKSUM
+      value: '{{ include "kagent.oauth2ProxySignInHTML" . | sha256sum }}'
+    - {name: OIDC_ISSUER_URL, value: "http://keycloak.localtest.me/realms/lava"}
+    - {name: OIDC_REDIRECT_URL, value: "http://kagent.localtest.me/oauth2/callback"}
+    - {name: UPSTREAM_URL, value: "http://kagent-ui:8080"}
+  extraArgs:
+    scope: "openid profile email"
+    cookie-secure: false
+    reverse-proxy: true
+    code-challenge-method: S256
+
+extraObjects:
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: kagent
+      namespace: kagent
+    spec:
+      ingressClassName: nginx
+      rules:
+        - host: kagent.localtest.me
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service: {name: kagent-login, port: {number: 4180}}

@@ -1,0 +1,58 @@
+# gh-agent reaches GitHub only through agentgateway. kagent forwards the signed-in
+# user's Keycloak token (tokenPassthrough); agentgateway swaps it for that user's own
+# GitHub token, so pull requests and reviews are made as the user, not as the agent.
+apiVersion: api.kagent.dev/v1alpha3
+kind: RemoteMCPServer
+metadata:
+  name: github
+  namespace: kagent
+  labels:
+    kagent.dev/discovery: disabled
+spec:
+  description: GitHub's MCP server behind agentgateway; acts as the signed-in user
+  protocol: STREAMABLE_HTTP
+  url: http://agentgateway.kagent.svc.cluster.local:3000/mcp/github
+  tokenPassthrough: true
+---
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: gh-agent
+  namespace: kagent
+spec:
+  harnessRef:
+    name: kagent
+  template:
+    inline:
+      description: GitHub assistant that works on repositories, issues and pull requests as the signed-in user.
+      modelConfig:
+        name: deepseek
+      tools:
+        - mcp:
+            server: {kind: RemoteMCPServer, name: github}
+            tools: [add_comment_to_pending_review, add_issue_comment, add_reply_to_pull_request_comment,
+                    create_branch, create_or_update_file, create_pull_request,
+                    get_commit, get_file_contents, get_label, get_latest_release,
+                    get_me, get_release_by_tag, get_tag, get_team_members, get_teams,
+                    issue_read, issue_write, list_branches, list_commits,
+                    list_issue_fields, list_issue_types, list_issues,
+                    list_pull_requests, list_releases, list_repository_collaborators,
+                    list_tags, pull_request_read, pull_request_review_write,
+                    push_files, search_code, search_commits, search_issues,
+                    search_pull_requests, search_repositories, sub_issue_write,
+                    update_issue_comment, update_pull_request,
+                    update_pull_request_branch]
+      systemPrompt: |
+        You are a GitHub assistant. You help with repositories, branches, files,
+        issues, pull requests and reviews. Every GitHub action you take is made as
+        the person talking to you, with exactly their GitHub permissions.
+
+        - Don't ask questions you can answer yourself. Choose branch names, commit
+          messages, PR titles and descriptions on your own, and go ahead.
+        - Ask only if you can't tell which repository is meant.
+        - Use only the GitHub tools; don't use bash or other built-in tools.
+        - If a tool returns an error or a denial, stop and report it as GitHub or the
+          gateway gave it. Do not retry another way.
+        - Work quietly: don't narrate your steps between tool calls.
+        - Reply in one or two short sentences: what you did and any link, or why it
+          was refused.

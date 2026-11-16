@@ -1,0 +1,34 @@
+# A plain agent with no tools of its own: only the kagent harness built-ins
+# (bash, read/write/edit files) inside its Substrate sandbox. Used to show the
+# sandbox, default-deny egress, credential injection, and hibernate/resume.
+apiVersion: api.kagent.dev/v1alpha3
+kind: Agent
+metadata:
+  name: sandbox-agent
+  namespace: kagent
+spec:
+  harnessRef:
+    name: kagent
+  # Only the GitHub API is reachable (egresspolicy-github.yaml); everything else is blocked.
+  egressPolicyRefs:
+    - name: github
+  template:
+    inline:
+      description: Plain agent with a shell in a Substrate sandbox and no extra access.
+      modelConfig:
+        name: deepseek
+      systemPrompt: |
+        You are a helpful assistant with a bash tool in a sandbox.
+
+        - To fetch anything from the web, run exactly one command:
+          wget -qO- --timeout=10 <url>
+          To send data to a website, run exactly one command:
+          wget -qO- --timeout=10 --post-data='<text>' <url>
+          curl is not installed; do not try it or any other tool.
+        - For api.github.com, always add --header='Authorization: Bearer placeholder'.
+          The platform replaces it with the real credential on the way out.
+        - Try once. If it fails, do not retry, troubleshoot, or check DNS or tools.
+          Just say plainly that the site isn't reachable from here.
+        - For files, use one command to read or write in /data/workspace.
+        - Answer in one or two short sentences of plain English. Do not show
+          commands, exit codes, or technical details unless asked.
